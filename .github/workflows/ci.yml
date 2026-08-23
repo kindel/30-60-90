@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install xlsx
+
+      - name: Generate fixtures
+        run: node scripts/generate-fixtures.js
+
+      - name: Run tests
+        run: node scripts/check.js
+
+      - name: Verify fixtures exist
+        run: |
+          test -f fixtures/sample-plan.json
+          test -f fixtures/sample-plan.xlsx
+          test -f fixtures/historical-format.xlsx
+          test -f fixtures/old-format-with-180.xlsx
+          echo "All fixtures present"

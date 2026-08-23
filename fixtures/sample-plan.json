@@ -1,0 +1,735 @@
+{
+  "version": 1,
+  "kind": "kindel.30-60-90",
+  "seat": {
+    "title": "VP Product",
+    "family": "pm"
+  },
+  "person": {
+    "name": "Jane Doe",
+    "role": "hire"
+  },
+  "manager": {
+    "name": "John Smith"
+  },
+  "startDate": "2024-06-01",
+  "include180": false,
+  "horizons": [
+    {
+      "id": "d30",
+      "offsetDays": 30,
+      "name": "Land",
+      "date": "2024-07-01"
+    },
+    {
+      "id": "d60",
+      "offsetDays": 60,
+      "name": "Understand Direction",
+      "date": "2024-07-31"
+    },
+    {
+      "id": "d90",
+      "offsetDays": 90,
+      "name": "Grasp Current Condition / Set Next Challenge",
+      "date": "2024-08-30"
+    }
+  ],
+  "lenses": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "facets": [
+        {
+          "id": "end-customer",
+          "name": "End-customer",
+          "cells": {
+            "d30": {
+              "objective": "Understand who the end-customer is",
+              "criteria": "I can name the top 5 customer segments and their needs",
+              "tactics": "Review customer research\nTalk to support team\nShadow customer calls",
+              "status": ""
+            },
+            "d60": {
+              "objective": "Know customer pain points",
+              "criteria": "I can prioritize the top 3 pain points with data",
+              "tactics": "Analyze support tickets\nConduct customer interviews",
+              "status": ""
+            },
+            "d90": {
+              "objective": "Have a customer-focused roadmap",
+              "criteria": "I have a prioritized list of features mapped to customer needs",
+              "tactics": "Create roadmap document\nGet stakeholder buy-in",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "dealers-users-of-the-product",
+          "name": "Dealers/users of the product",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "3rd-parties",
+          "name": "3rd parties",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "people",
+          "name": "People",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "programs",
+          "name": "Programs",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "facets": [
+        {
+          "id": "finance",
+          "name": "Finance",
+          "cells": {
+            "d30": {
+              "objective": "Understand the P&L",
+              "criteria": "I can explain the revenue and cost structure",
+              "tactics": "Meet with finance team\nReview quarterly reports",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "marketing",
+          "name": "Marketing",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "biz-dev",
+          "name": "Biz Dev",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "m-a",
+          "name": "M&A",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "goals",
+          "name": "Goals",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "strategy",
+          "name": "Strategy",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "people",
+          "name": "People",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "name": "Technical",
+      "facets": [
+        {
+          "id": "architecture",
+          "name": "Architecture",
+          "cells": {
+            "d30": {
+              "objective": "Learn the system architecture",
+              "criteria": "I can draw the high-level architecture diagram",
+              "tactics": "Read architecture docs\nMeet with tech leads",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "cloud-software",
+          "name": "Cloud/software",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "device-firmware",
+          "name": "Device/firmware",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "hardware",
+          "name": "Hardware",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "development",
+          "name": "Development",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "operations",
+          "name": "Operations",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "people",
+          "name": "People",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "name": "Organization",
+      "facets": [
+        {
+          "id": "people",
+          "name": "People",
+          "cells": {
+            "d30": {
+              "objective": "Meet the team",
+              "criteria": "I have had 1:1s with everyone on the team",
+              "tactics": "Schedule 1:1s\nAttend team meetings",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "culture",
+          "name": "Culture",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "org-design",
+          "name": "Org design",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "career-growth",
+          "name": "Career growth",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "hiring",
+          "name": "Hiring",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d60": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            },
+            "d90": {
+              "objective": "",
+              "criteria": "",
+              "tactics": "",
+              "status": ""
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

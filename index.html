@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>30-60-90 Plan Editor</title>
+  <link rel="stylesheet" href="css/thirty-sixty-ninety.css">
+</head>
+<body>
+  <main class="tsn-host">
+    <header class="tsn-header">
+      <h1>30-60-90</h1>
+      <p>A first-quarter plan you can inspect. CBTO grid, dated horizons, inspectable evaluation criteria.</p>
+    </header>
+    <div id="tsn-app"></div>
+    <footer class="tsn-footer">
+      <p>
+        The 30-60-90 grid: Customer, Business, Technical, Organization. Each horizon has a key objective, 
+        evaluation criteria (first-person and inspectable), tactics, and status. 
+        <a href="https://blog.kindel.com/2026/08/12/hiring-first-everything-else-second/">Read more</a>.
+      </p>
+      <p>
+        <a href="https://kindel.com">kindel.com</a> |
+        <a href="https://github.com/kindel/30-60-90">GitHub</a>
+      </p>
+    </footer>
+  </main>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="js/thirty-sixty-ninety.js"></script>
+  <script>
+    new ThirtySixtyNinetyEditor({ root: "tsn-app" });
+  </script>
+</body>
+</html>
