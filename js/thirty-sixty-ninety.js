@@ -243,7 +243,7 @@
 
         (plan.horizons || []).forEach(function (h) {
           var cell = (facet.cells || {})[h.id] || {};
-          var hasContent = cell.objective || cell.criteria || cell.tactics;
+          var hasContent = cell.objective || cell.criteria || cell.tactics || cell.status;
           if (!hasContent) return;
 
           lines.push("#### " + h.offsetDays + " Days: " + h.name + " (" + formatDate(fromIso(h.date)) + ")");
@@ -477,7 +477,7 @@
     return {
       version: VERSION,
       kind: KIND,
-      seat: { title: "", family: "pm" },
+      seat: { title: "Imported Plan", family: "pm" },
       person: { name: "", role: "hire" },
       manager: { name: "" },
       startDate: startDate,
@@ -847,7 +847,6 @@
         var lens = self.plan.lenses.find(function (l) { return l.id === lensId; });
         if (lens && lens.facets[facetIdx]) {
           lens.facets[facetIdx].name = input.value;
-          lens.facets[facetIdx].id = slugify(input.value) || ("facet-" + facetIdx);
           self.setDirty(true);
           self.saveDraft();
         }

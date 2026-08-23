@@ -128,6 +128,21 @@ assert(md.indexOf("Understand the customer") >= 0, "markdown has objective");
 assert(md.indexOf("I can name the top 5 customer segments") >= 0, "markdown has criteria");
 assert(md.indexOf("- Review customer data") >= 0, "markdown has tactics as bullets");
 
+console.log("Testing exportMarkdown with status-only cell...");
+var statusOnlyPlan = api.createNewPlan({
+  seatTitle: "Test Role",
+  family: "pm",
+  startDate: "2024-06-01"
+});
+statusOnlyPlan.lenses[0].facets[0].cells.d30 = {
+  objective: "",
+  criteria: "",
+  tactics: "",
+  status: "Completed"
+};
+var statusMd = api.exportMarkdown(statusOnlyPlan);
+assert(statusMd.indexOf("Completed") >= 0, "markdown includes status-only cells");
+
 console.log("Testing exportXlsx...");
 var wb = api.exportXlsx(plan);
 assert(wb.SheetNames.length === 1, "workbook has one sheet");
@@ -168,6 +183,9 @@ XLSX.utils.book_append_sheet(historicalWb, historicalWs, "Charlie's Take");
 
 var historicalPlan = api.importXlsx(historicalWb);
 assertEqual(historicalPlan.lenses.length, 4, "historical import has 4 lenses");
+assert(historicalPlan.seat.title.length > 0, "imported plan has non-empty seat title");
+var importValidation = api.validatePlan(historicalPlan);
+assert(importValidation.valid, "imported plan should validate");
 
 var customerLens = historicalPlan.lenses.find(function (l) { return l.id === "customer"; });
 assert(customerLens.facets.length >= 2, "customer lens has facets");

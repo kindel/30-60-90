@@ -1,5 +1,10 @@
 {
+  "private": true,
+  "description": "30-60-90 plan editor - test dependencies only",
   "dependencies": {
     "xlsx": "^0.18.5"
+  },
+  "comments": {
+    "xlsx-version": "npm has 0.18.5; browser CDN has 0.20.1. APIs are compatible for import/export."
   }
 }
