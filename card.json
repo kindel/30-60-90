@@ -1,0 +1,13 @@
+{
+  "id": "30-60-90",
+  "name": "30/60/90",
+  "subtitle": "The first 90 days as a plan",
+  "href": "/30-60-90/",
+  "status": "later",
+  "order": 17,
+  "icon": "icon.png",
+  "summary": "An interactive app that writes a 30/60/90 plan document from the role, the 12-month excellence hypothesis, and a start date. You leave with a plan you can inspect at day 90, not a welcome-kit checklist. Useful when the offer is out and the first quarter is still a vibe.",
+  "posts": [
+    { "title": "Hiring First. Everything Else Second.", "href": "https://blog.kindel.com/2026/08/12/hiring-first-everything-else-second/" }
+  ]
+}
