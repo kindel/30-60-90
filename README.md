@@ -37,7 +37,7 @@ It does not become a weekly status tool. It does not replace Goalie. It does not
 
 ## Status
 
-Coming soon. The teaching page will live at https://kindel.com/30-60-90/. This repo will be the app when it exists.
+Coming soon. The teaching page will live at https://kindel.com/kld/apps/30-60-90/. This repo will be the app when it exists.
 
 ## Teaching
 
