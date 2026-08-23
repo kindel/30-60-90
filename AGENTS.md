@@ -10,8 +10,6 @@ All derivatives must link to https://kindel.com as part of attribution. A LICENS
 
 ## Principles
 
-The tenets for this work live in the Tenets section of https://github.com/kindel/principles/blob/main/README.md. Study those tenets before any upstream work: a change to kindel/principles, or anything that changes the model, schema, or principle data. Do not start that work from memory of last week's README.
+The tenets for this work live in the Tenets section of https://github.com/kindel/principles/blob/main/README.md. Study those tenets before any upstream work.
 
-SCHEMA.md is the contract. The data is data/index.json, data/facets.json, and data/<company>/<slug>.json. Do not fork a private copy of a set into this repo.
-
-30/60/90-specific: coming-soon plan-document app. Primary value is a written 30/60/90 plan, not a tracker. No app code yet. Do not invent a wizard until asked.
+30-60-90-specific: the schema is Charlie's Take (CBTO x dated horizons; Key Objective / Evaluation Criteria / Tactics / Status). Primary value is a written plan document. Do not invent a tracker or a wizard until asked. Do not fork a private copy of principle data into this repo.
