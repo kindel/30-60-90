@@ -12,4 +12,4 @@ All derivatives must link to https://kindel.com as part of attribution. A LICENS
 
 The tenets for this work live in the Tenets section of https://github.com/kindel/principles/blob/main/README.md. Study those tenets before any upstream work.
 
-30-60-90-specific: the schema is Charlie's Take (CBTO x dated horizons; Key Objective / Evaluation Criteria / Tactics / Status). Primary value is a written plan document. Do not invent a tracker or a wizard until asked. Do not fork a private copy of principle data into this repo.
+30-60-90-specific: the schema is the 30-60-90 grid (CBTO x dated horizons; Key Objective / Evaluation Criteria / Tactics / Status). Tig, not Charlie. Primary value is a written plan document. Do not invent a tracker or a wizard until asked. Do not fork a private copy of principle data into this repo.

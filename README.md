@@ -4,7 +4,7 @@ A coming-soon interactive app that writes a 30-60-90 plan document. The product 
 
 ## The Model
 
-The schema is **Charlie's Take**, locked from three real plans: Tig's SVP rewrite, Avi's hardware plan, and Abhishek's PM plan. Martin's activity list is the anti-pattern.
+The schema is the **30-60-90 grid**: CBTO rows, dated named horizons, inspectable criteria. Locked from three real plans Tig wrote or edited (an SVP rewrite, Avi's hardware plan, and Abhishek's PM plan). The old spreadsheet tab said "Charlie's Take" because that is what Tig was called then. Martin's activity list is the anti-pattern.
 
 Horizons are dated and named, not generic "30 days."
 
@@ -29,7 +29,7 @@ Mechanisms are a first-class facet, including taking ownership of Goalie when th
 1. Ask for the seat and a start date. Compute the three (or four) horizon dates.
 2. Offer a facet list for that seat family (PM, hardware, general manager). Let them add or drop rows. Do not invent a new grid.
 3. Walk the cells. Refuse an objective with no evaluation criterion. Refuse a criterion that is only an activity.
-4. Export two artifacts: a spreadsheet that matches Charlie's Take, and a readable plan document a hiring manager and a new hire can share on day one.
+4. Export two artifacts: a spreadsheet that matches the grid, and a readable plan document a hiring manager and a new hire can share on day one.
 
 ## What it does not do
 
