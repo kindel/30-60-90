@@ -26,6 +26,9 @@ jobs:
       - name: Run tests
         run: node scripts/check.js
 
+      - name: Check essay links
+        run: node scripts/check-essay-links.js
+
       - name: Verify fixtures exist
         run: |
           test -f fixtures/sample-plan.json
