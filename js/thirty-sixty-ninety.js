@@ -2388,7 +2388,7 @@
       "  </label>",
       "</div>",
       '<div class="tsn-title-row">',
-      '  <h1>30-60-90: <span class="tsn-seat-title tsn-editable' + (seat ? "" : " is-empty") + '" contenteditable="true" data-placeholder="Seat title">' + esc(seat) + "</span>",
+      '  <h1>30-60-90 <span class="tsn-beta">Beta</span>: <span class="tsn-seat-title tsn-editable' + (seat ? "" : " is-empty") + '" contenteditable="true" data-placeholder="Seat title">' + esc(seat) + "</span>",
       '    <span class="tsn-title-meta"> · starts ',
       '      <label class="tsn-start-wrap"><span class="tsn-start-label">' + esc(formatDateShort(start)) + "</span>",
       '        <input type="date" class="tsn-start-date-input" value="' + esc(plan.startDate) + '">',

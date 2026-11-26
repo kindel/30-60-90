@@ -1,0 +1,31 @@
+{{ define "header" }}
+  {{- $card := index .Site.Data.tools "30-60-90" -}}
+  {{ partial "tool-page-hero.html" (dict "page" . "card" $card) }}
+{{ end }}
+
+{{ define "main" }}
+  <link rel="stylesheet" href="{{ "css/thirty-sixty-ninety.css" | relURL }}">
+  <article class="kld-topics-page tool-page thirty-sixty-ninety-host">
+    {{ with index .Site.Data.tools "30-60-90" }}
+      {{ partial "app-kit/frame-start.html" (dict "card" . "page" $) }}
+      {{ partial "app-kit/summary.html" . }}
+      {{ partial "app-kit/related.html" . }}
+    {{ end }}
+    <div class="tsn-host" id="tsn-host">
+      <div id="tsn-app"></div>
+    </div>
+    {{ partial "app-kit/frame-end.html" . }}
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="{{ "js/templates.js" | relURL }}"></script>
+    <script src="{{ "js/thirty-sixty-ninety.js" | relURL }}"></script>
+    <script>
+      new ThirtySixtyNinetyEditor({ root: "tsn-app" });
+    </script>
+    <p class="tsn-repo">
+      <a href="https://github.com/kindel/30-60-90" target="_blank" rel="noopener" aria-label="kindel/30-60-90 on GitHub">
+        {{ partial "svg/github.svg" (dict "class" "tsn-repo-icon") }}
+      </a>
+    </p>
+    {{ partial "app-feedback.html" (dict "app" "30-60-90" "repo" "https://github.com/kindel/30-60-90") }}
+  </article>
+{{ end }}

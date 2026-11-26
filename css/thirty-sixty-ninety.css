@@ -23,11 +23,20 @@
   box-sizing: border-box;
 }
 
-body {
+body.tsn-page {
   margin: 0;
   font: 16px/1.5 Inter, system-ui, sans-serif;
   color: var(--kld-ink);
   background: var(--kld-paper);
+}
+
+.tool-page.thirty-sixty-ninety-host {
+  --tool-page-width: 1360px;
+}
+
+.app-frame .tsn-host {
+  max-width: none;
+  padding: 0.75rem 0 1.25rem;
 }
 
 .tsn-host {
@@ -166,6 +175,22 @@ body {
   margin: 0;
   font-size: 1.6rem;
   font-weight: 700;
+}
+
+.tsn-beta {
+  display: inline-block;
+  margin: 0 0.4rem 0 0.15rem;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid var(--kld-rust);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kld-rust);
+  vertical-align: middle;
+  position: relative;
+  top: -0.12em;
 }
 
 .tsn-title-meta {
@@ -908,6 +933,17 @@ body {
   color: var(--kld-rust);
 }
 
+.tsn-repo {
+  margin: 0.75rem 0 0;
+  text-align: right;
+}
+
+.tsn-repo-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--kld-muted);
+}
+
 [hidden] {
   display: none !important;
 }
@@ -1185,7 +1221,9 @@ body {
   .tsn-cell-hints,
   .tsn-flag-card,
   .tsn-legend,
-  .tsn-footer {
+  .tsn-footer,
+  .tsn-beta,
+  .tsn-repo {
     display: none !important;
   }
 
