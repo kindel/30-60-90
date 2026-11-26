@@ -3,7 +3,7 @@
 
   var VERSION = 1;
   var KIND = "kindel.30-60-90";
-  var STORE_KEY = "kindel.30-60-90.draft.v1";
+  var STORE_KEY = "kindel.30-60-90.draft.v2";
   var LENS_ORDER = ["customer", "business", "technical", "organization"];
   var LENS_LETTERS = { customer: "C", business: "B", technical: "T", organization: "O" };
   var HORIZON_OFFSETS = { d30: 30, d60: 60, d90: 90, d180: 180 };
