@@ -74,7 +74,10 @@
     return String(s == null ? "" : s)
       .split(/\n/)
       .map(function (l) {
-        return l.replace(/^\s*[✓✔▪•\-]+\s*/, "").trim();
+        return l
+          .replace(/^\s*[✓✔▪•]+\s*/, "")
+          .replace(/^\s*-\s+/, "")
+          .trim();
       })
       .filter(function (l) { return l.length > 0; });
   }
@@ -339,8 +342,6 @@
     if (/^i know\b/.test(s)) return true;
     if (/^i have\b/.test(s) || /^i've\b/.test(s)) return true;
     if (/^my\b/.test(s)) return true;
-    if (/^i will\b/.test(s) || /^i'll\b/.test(s)) return false;
-    if (/\bhas\b/.test(s)) return true;
     return false;
   }
 
@@ -355,12 +356,74 @@
     return startsWithActivity(lower);
   }
 
-  function dismissedSet(cell) {
+  function normLine(s) {
+    return String(s || "").trim().toLowerCase();
+  }
+
+  function dismissedTextSet(cell) {
     var out = {};
-    ((cell && cell.dismissed) || []).forEach(function (idx) {
-      out[idx] = true;
+    ((cell && cell.dismissedText) || []).forEach(function (t) {
+      var n = normLine(t);
+      if (n) out[n] = true;
     });
     return out;
+  }
+
+  function pruneDismissals(cell) {
+    if (!cell) return;
+    var texts = cell.dismissedText;
+    if (!texts || !texts.length) return;
+    var crits = splitLines(cell.criteria);
+    var keptText = [];
+    var keptIdx = [];
+    texts.forEach(function (t) {
+      var n = normLine(t);
+      var idx = -1;
+      crits.forEach(function (c, i) {
+        if (idx < 0 && normLine(c) === n) idx = i;
+      });
+      if (idx >= 0) {
+        keptText.push(t);
+        keptIdx.push(idx);
+      }
+    });
+    if (keptText.length) {
+      cell.dismissedText = keptText;
+      cell.dismissed = keptIdx;
+    } else {
+      delete cell.dismissedText;
+      delete cell.dismissed;
+    }
+  }
+
+  function hydrateCellDismissals(cell) {
+    if (!cell || (cell.dismissedText && cell.dismissedText.length)) return;
+    var crits = splitLines(cell.criteria);
+    if (!cell.dismissed || !cell.dismissed.length) return;
+    cell.dismissedText = [];
+    cell.dismissed.forEach(function (idx) {
+      if (crits[idx]) cell.dismissedText.push(crits[idx]);
+    });
+    if (!cell.dismissedText.length) delete cell.dismissedText;
+  }
+
+  function hydratePlanDismissals(plan) {
+    if (!plan || !plan.lenses) return plan;
+    plan.lenses.forEach(function (lens) {
+      (lens.facets || []).forEach(function (facet) {
+        Object.keys(facet.cells || {}).forEach(function (hid) {
+          hydrateCellDismissals(facet.cells[hid]);
+        });
+      });
+    });
+    return plan;
+  }
+
+  function isDismissedLine(cell, text, lineIndex) {
+    if (cell && cell.dismissedText && cell.dismissedText.length) {
+      return !!dismissedTextSet(cell)[normLine(text)];
+    }
+    return !!((cell && cell.dismissed) || []).some(function (idx) { return idx === lineIndex; });
   }
 
   function pressureTestCell(cell) {
@@ -368,7 +431,6 @@
     if (!cell) return flags;
     var obj = (cell.objective || "").trim();
     var crits = splitLines(cell.criteria);
-    var dismissed = dismissedSet(cell);
 
     if (obj && crits.length === 0) {
       flags.push({
@@ -378,7 +440,7 @@
     }
 
     crits.forEach(function (text, lineIndex) {
-      if (dismissed[lineIndex]) return;
+      if (isDismissedLine(cell, text, lineIndex)) return;
       if (lineLooksLikeTactic(text)) {
         flags.push({
           type: "tactic-like",
@@ -877,7 +939,7 @@
       if (!raw) return;
       var plan = JSON.parse(raw);
       var result = validatePlan(plan);
-      if (result.valid) this.plan = plan;
+      if (result.valid) this.plan = hydratePlanDismissals(plan);
     } catch (e) {}
   };
 
@@ -1379,6 +1441,7 @@
     if (field === "oc") {
       cell.objective = lines[0] || "";
       cell.criteria = lines.slice(1).filter(function (l) { return String(l).trim(); }).join("\n");
+      pruneDismissals(cell);
     } else if (field === "tactics") {
       cell.tactics = lines.filter(function (l) { return String(l).trim(); }).join("\n");
     } else if (field === "status") {
@@ -1580,7 +1643,8 @@
       var moved = crits.splice(lineIndex, 1)[0];
       cell.criteria = crits.join("\n");
       cell.tactics = (cell.tactics ? splitLines(cell.tactics).concat([moved]) : [moved]).join("\n");
-      if (cell.dismissed) {
+      pruneDismissals(cell);
+      if (cell.dismissed && (!cell.dismissedText || !cell.dismissedText.length)) {
         cell.dismissed = cell.dismissed.filter(function (i) { return i !== lineIndex; }).map(function (i) {
           return i > lineIndex ? i - 1 : i;
         });
@@ -1594,14 +1658,18 @@
     if (mode === "rewrite") {
       crits[lineIndex] = "I can ";
       cell.criteria = crits.join("\n");
+      pruneDismissals(cell);
       this.touch();
       this.renderCellPair(lensId, facetId, horizonId);
       this.focusCell(lensId, facetId, horizonId, "oc", lineIndex + 1);
       return;
     }
     if (mode === "keep") {
+      var kept = crits[lineIndex];
       if (!cell.dismissed) cell.dismissed = [];
       if (cell.dismissed.indexOf(lineIndex) < 0) cell.dismissed.push(lineIndex);
+      if (!cell.dismissedText) cell.dismissedText = [];
+      if (!dismissedTextSet(cell)[normLine(kept)]) cell.dismissedText.push(kept);
       this.touch();
       this.refreshCellFlags(cellEl);
     }
@@ -1799,7 +1867,7 @@
           alert("Invalid file: " + result.error);
           return;
         }
-        self.plan = plan;
+        self.plan = hydratePlanDismissals(plan);
         self.fresh = false;
         self.setDirty(false);
         self.saveDraft();
@@ -2260,7 +2328,9 @@
     getBundle: getBundle,
     setBundle: setBundle,
     loadTemplates: loadTemplates,
-    splitLines: splitLines
+    splitLines: splitLines,
+    pruneDismissals: pruneDismissals,
+    hydratePlanDismissals: hydratePlanDismissals
   };
 
 })(typeof window !== "undefined" ? window : global);

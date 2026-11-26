@@ -41,7 +41,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 }
 ```
 
-v1 files omit `template`, `horizon.dateManual`, and `cell.dismissed`. They still load.
+v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load.
 
 ## Provenance
 
@@ -118,7 +118,8 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 | `criteria` | string | no | Evaluation criteria. One bullet per line. Should be first-person and inspectable. |
 | `tactics` | string | no | Tactics and deliverables. One bullet per line. |
 | `status` | string | no | Status. Empty on a new plan. |
-| `dismissed` | number[] | no | Criterion line indexes the author kept after the tactic redirect. |
+| `dismissed` | number[] | no | Current indexes of criteria the author kept after the tactic redirect. |
+| `dismissedText` | string[] | no | The kept criterion text. Keep writes both this and `dismissed`. Edits drop a Keep when the text is gone. |
 
 ## Horizon defaults
 
@@ -164,7 +165,7 @@ Example valid: "I can enumerate the 15 programs and their owners"
 Example valid: "My plan cites customer input"
 Example valid: "The CEO has reviewed my priorities"
 
-Keep dismisses the flag for that line and stores the index on `cell.dismissed`.
+Keep dismisses the flag for that line. It stores the line index on `cell.dismissed` and the criterion text on `cell.dismissedText`. Replacing the line re-flags it. Index-only `dismissed` from earlier files still loads.
 
 ## Exports
 

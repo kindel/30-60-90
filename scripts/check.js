@@ -258,9 +258,74 @@ flags = api.pressureTestCell({
 });
 assertEqual(flags.length, 0, "dismissed tactic line is kept");
 
+flags = api.pressureTestCell({
+  objective: "",
+  criteria: "Meet whoever has the data",
+  tactics: "",
+  status: ""
+});
+assertEqual(flags.length, 1, "has in the middle of a tactic still flags");
+
+flags = api.pressureTestCell({
+  objective: "",
+  criteria: "Read what has changed",
+  tactics: "",
+  status: ""
+});
+assertEqual(flags.length, 1, "Read what has changed still flags");
+
+flags = api.pressureTestCell({
+  objective: "",
+  criteria: "Finance has accepted my plan's budget",
+  tactics: "",
+  status: ""
+});
+assertEqual(flags.length, 0, "Someone has … is not a tactic");
+
+flags = api.pressureTestCell({
+  objective: "",
+  criteria: "Meet every skip-level",
+  tactics: "",
+  dismissed: [0],
+  dismissedText: ["Meet every skip-level"],
+  status: ""
+});
+assertEqual(flags.length, 0, "kept text stays dismissed");
+
+flags = api.pressureTestCell({
+  objective: "",
+  criteria: "Read confidential files",
+  tactics: "",
+  dismissed: [0],
+  dismissedText: ["Meet every skip-level"],
+  status: ""
+});
+assertEqual(flags.length, 1, "replacing a kept line re-flags it");
+
+var keptCell = {
+  objective: "",
+  criteria: "Meet every skip-level",
+  tactics: "",
+  dismissed: [0],
+  dismissedText: ["Meet every skip-level"],
+  status: ""
+};
+keptCell.criteria = "Read confidential files";
+api.pruneDismissals(keptCell);
+assert(!keptCell.dismissed, "prune drops Keep when the text is gone");
+assertEqual(api.pressureTestCell(keptCell).length, 1, "pruned Keep re-flags");
+
 assert(api.lineLooksLikeTactic("Meet with the PMs"), "Meet with the PMs is a tactic");
 assert(!api.lineLooksLikeTactic("I can name our top 10 customers"), "I can name is not a tactic");
 assert(api.lineLooksLikeTactic("I will meet the PMs"), "I will meet is a tactic");
+assert(api.lineLooksLikeTactic("Meet whoever has the data"), "Meet whoever has the data is a tactic");
+assert(!api.lineLooksLikeTactic("The CEO has reviewed my priorities"), "Someone has … is not a tactic");
+
+console.log("Testing splitLines...");
+assertEqual(api.splitLines("-5% churn").join("|"), "-5% churn", "leading minus is not a bullet");
+assertEqual(api.splitLines("- cut churn").join("|"), "cut churn", "dash plus space is a bullet");
+assertEqual(api.splitLines("✓ I can name them").join("|"), "I can name them", "check bullet strips");
+assertEqual(api.splitLines("▪ Ride support calls").join("|"), "Ride support calls", "square bullet strips");
 
 console.log("Testing dateManual...");
 var dated = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
