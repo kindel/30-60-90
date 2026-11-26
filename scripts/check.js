@@ -182,6 +182,42 @@ assert(emptied.template && emptied.template.id === "product-senior", "blank plan
 var emptiedValidation = api.validatePlan(emptied);
 assert(emptiedValidation.valid, "empty plan should validate");
 
+console.log("Testing empty localStorage drafts...");
+assert(api.isUntouchedEmptyDraft(emptied), "empty draft without startedBlank is untouched");
+assert(!api.isUntouchedEmptyDraft(defaulted), "filled plan is not an empty draft");
+var startedBlank = JSON.parse(JSON.stringify(emptied));
+startedBlank.startedBlank = true;
+assert(!api.isUntouchedEmptyDraft(startedBlank), "Start blank is not treated as an old empty draft");
+assert(api.validatePlan(startedBlank).valid, "startedBlank remains a valid plan");
+
+function memoryStore(map) {
+  return {
+    getItem: function (key) { return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null; },
+    removeItem: function (key) { delete map[key]; }
+  };
+}
+
+var v1Store = {};
+v1Store[api.STORE_KEYS[1]] = JSON.stringify(emptied);
+assert(api.readStoredDraft(memoryStore(v1Store)) == null, "old empty v1 draft is ignored");
+assert(v1Store[api.STORE_KEYS[1]] == null, "ignored empty v1 draft is removed");
+
+var v2Empty = {};
+v2Empty[api.STORE_KEYS[0]] = JSON.stringify(emptied);
+assert(api.readStoredDraft(memoryStore(v2Empty)) == null, "empty v2 draft without startedBlank is ignored");
+
+var v2Started = {};
+v2Started[api.STORE_KEYS[0]] = JSON.stringify(startedBlank);
+var keptBlank = api.readStoredDraft(memoryStore(v2Started));
+assert(keptBlank && keptBlank.startedBlank, "Start blank draft is kept");
+assert(!api.planHasCellContent(keptBlank), "Start blank draft stays empty");
+
+var v2Filled = {};
+v2Filled[api.STORE_KEYS[0]] = JSON.stringify(defaulted);
+var keptFilled = api.readStoredDraft(memoryStore(v2Filled));
+assert(keptFilled && api.planHasCellContent(keptFilled), "filled draft is kept");
+assertEqual(keptFilled.seat.title, template.seatTitle, "filled draft keeps the template seat title");
+
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({
   seatTitle: "SVP Engineering",

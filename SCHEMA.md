@@ -61,6 +61,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 | `startDate` | string | yes | ISO 8601 date (YYYY-MM-DD). The first day of the plan. |
 | `include180` | boolean | no | If true, add a fourth horizon at 180 days. Default false. |
 | `template` | object | no | `{ id, version }` of the template the blank plan started from. New plans record this. v1 files do not have it. |
+| `startedBlank` | boolean | no | True after Start blank. An empty localStorage draft without this flag is ignored so an old empty grid does not hide the filled template. |
 | `horizons` | array | yes | The time horizons (30, 60, 90, optionally 180 days). |
 | `lenses` | array | yes | The four CBTO lenses with their facets. |
 

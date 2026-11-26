@@ -1086,6 +1086,7 @@ body {
   .tsn-cell-edit,
   .tsn-line-text {
     pointer-events: none;
+    color: var(--kld-ink);
   }
 
   .tsn-facet-name,

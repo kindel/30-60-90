@@ -4,6 +4,7 @@
   var VERSION = 1;
   var KIND = "kindel.30-60-90";
   var STORE_KEY = "kindel.30-60-90.draft.v2";
+  var STORE_KEYS = ["kindel.30-60-90.draft.v2", "kindel.30-60-90.draft.v1"];
   var LENS_ORDER = ["customer", "business", "technical", "organization"];
   var LENS_LETTERS = { customer: "C", business: "B", technical: "T", organization: "O" };
   var HORIZON_OFFSETS = { d30: 30, d60: 60, d90: 90, d180: 180 };
@@ -312,6 +313,43 @@
       });
     });
     return found;
+  }
+
+  function isUntouchedEmptyDraft(plan) {
+    return !!(plan && !plan.startedBlank && !planHasCellContent(plan));
+  }
+
+  function storageGet(storage, key) {
+    if (!storage || typeof storage.getItem !== "function") return null;
+    try {
+      return storage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function storageRemove(storage, key) {
+    if (!storage || typeof storage.removeItem !== "function") return;
+    try { storage.removeItem(key); } catch (e) {}
+  }
+
+  function readStoredDraft(storage) {
+    var i;
+    for (i = 0; i < STORE_KEYS.length; i++) {
+      try {
+        var raw = storageGet(storage, STORE_KEYS[i]);
+        if (!raw) continue;
+        var plan = JSON.parse(raw);
+        var result = validatePlan(plan);
+        if (!result.valid) continue;
+        if (isUntouchedEmptyDraft(plan)) {
+          storageRemove(storage, STORE_KEYS[i]);
+          continue;
+        }
+        return hydratePlanDismissals(plan);
+      } catch (e) {}
+    }
+    return null;
   }
 
   function createNewPlan(opts) {
@@ -891,14 +929,25 @@
 
   function loadTemplates(done) {
     var bundled = getBundle();
-    function finish(bundle) {
-      setBundle(bundle);
-      done(null, bundle);
+    var finished = false;
+    var timer = null;
+    function finish(err, bundle) {
+      if (finished) return;
+      finished = true;
+      if (timer) clearTimeout(timer);
+      if (bundle) setBundle(bundle);
+      done(err || null, bundle || null);
+    }
+    if (bundled) {
+      finish(null, bundled);
+      return;
     }
     if (typeof fetch === "undefined" || isFileProtocol()) {
-      if (!bundled) return done(new Error("No template bundle"));
-      return finish(bundled);
+      return finish(new Error("No template bundle"));
     }
+    timer = setTimeout(function () {
+      finish(new Error("Template fetch timed out"));
+    }, 4000);
     fetchJson("templates/index.json").then(function (manifest) {
       var entries = manifest.templates || [];
       var loads = entries.map(function (entry) {
@@ -910,7 +959,7 @@
       return Promise.all([Promise.all(loads), facetLoad]).then(function (parts) {
         var templates = {};
         parts[0].forEach(function (item) { templates[item.id] = item.json; });
-        finish({
+        finish(null, {
           kind: "kindel.30-60-90.templates-bundle",
           version: 1,
           manifest: manifest,
@@ -919,8 +968,7 @@
         });
       });
     }).catch(function () {
-      if (!bundled) return done(new Error("No template bundle"));
-      finish(bundled);
+      finish(new Error("No template bundle"));
     });
   }
 
@@ -960,6 +1008,7 @@
     loadTemplates(function (err, bundle) {
       self.bundle = bundle;
       self.template = getDefaultTemplate(bundle);
+      if (err || !self.template) return;
       self.loadDraft();
       if (!self.plan) {
         self.plan = createNewPlan({ template: self.template });
@@ -973,11 +1022,7 @@
 
   ThirtySixtyNinetyEditor.prototype.loadDraft = function () {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return;
-      var plan = JSON.parse(raw);
-      var result = validatePlan(plan);
-      if (result.valid) this.plan = hydratePlanDismissals(plan);
+      this.plan = readStoredDraft(localStorage);
     } catch (e) {}
   };
 
@@ -1965,6 +2010,7 @@
           });
         });
       });
+      self.plan.startedBlank = true;
       self.fresh = true;
       self.panel = null;
       self.touch();
@@ -1988,6 +2034,7 @@
           return;
         }
         self.plan = hydratePlanDismissals(plan);
+        if (!planHasCellContent(self.plan)) self.plan.startedBlank = true;
         self.fresh = false;
         self.setDirty(false);
         self.saveDraft();
@@ -2014,6 +2061,7 @@
         var data = new Uint8Array(e.target.result);
         var workbook = XLSX.read(data, { type: "array" });
         self.plan = importXlsx(workbook, self.template);
+        if (!planHasCellContent(self.plan)) self.plan.startedBlank = true;
         self.fresh = false;
         self.setDirty(true);
         self.saveDraft();
@@ -2455,7 +2503,10 @@
     splitLines: splitLines,
     pruneDismissals: pruneDismissals,
     hydratePlanDismissals: hydratePlanDismissals,
-    planHasCellContent: planHasCellContent
+    planHasCellContent: planHasCellContent,
+    isUntouchedEmptyDraft: isUntouchedEmptyDraft,
+    readStoredDraft: readStoredDraft,
+    STORE_KEYS: STORE_KEYS
   };
 
 })(typeof window !== "undefined" ? window : global);
