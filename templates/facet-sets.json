@@ -1,0 +1,24 @@
+{
+  "kind": "kindel.30-60-90.facet-sets",
+  "version": 1,
+  "sets": {
+    "hardware": {
+      "label": "Hardware",
+      "lenses": {
+        "customer": ["End-customer", "Dealers", "3rd parties/vendors", "People", "Programs", "Mechanisms"],
+        "business": ["Finance", "M&A", "Goals", "Strategy", "People", "Mechanisms"],
+        "technical": ["Architecture", "Hardware", "Operations/supply", "People", "Mechanisms"],
+        "organization": ["People", "Org design", "Career growth", "Hiring", "Mechanisms"]
+      }
+    },
+    "general": {
+      "label": "General Manager / SVP",
+      "lenses": {
+        "customer": ["People we serve", "Channel", "3rd parties", "People", "Mechanisms"],
+        "business": ["Finance", "Goals", "Strategy", "People", "Mechanisms"],
+        "technical": ["Architecture", "Development", "Operations", "People", "Mechanisms"],
+        "organization": ["People", "Org design", "Hiring", "Mechanisms"]
+      }
+    }
+  }
+}

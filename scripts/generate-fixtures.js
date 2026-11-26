@@ -5,23 +5,23 @@ var fs = require("fs");
 var path = require("path");
 var XLSX = require("xlsx");
 
-var srcPath = path.join(__dirname, "..", "js", "thirty-sixty-ninety.js");
-var src = fs.readFileSync(srcPath, "utf8");
+var root = path.join(__dirname, "..");
+var templatesSrc = fs.readFileSync(path.join(root, "js", "templates.js"), "utf8");
+var src = fs.readFileSync(path.join(root, "js", "thirty-sixty-ninety.js"), "utf8");
 
-var window = {};
-var global = window;
+var window = globalThis;
+eval(templatesSrc);
 eval(src);
 
-var api = window.kindel3090;
+var api = globalThis.kindel3090;
 
-var fixturesDir = path.join(__dirname, "..", "fixtures");
+var fixturesDir = path.join(root, "fixtures");
 if (!fs.existsSync(fixturesDir)) {
   fs.mkdirSync(fixturesDir, { recursive: true });
 }
 
 var plan = api.createNewPlan({
   seatTitle: "VP Product",
-  family: "pm",
   startDate: "2024-06-01",
   personName: "Jane Doe",
   managerName: "John Smith",

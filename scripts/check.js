@@ -4,15 +4,19 @@
 var fs = require("fs");
 var path = require("path");
 var XLSX = require("xlsx");
+var builder = require("./build-templates");
 
-var srcPath = path.join(__dirname, "..", "js", "thirty-sixty-ninety.js");
+var root = path.join(__dirname, "..");
+var srcPath = path.join(root, "js", "thirty-sixty-ninety.js");
+var templatesJsPath = path.join(root, "js", "templates.js");
 var src = fs.readFileSync(srcPath, "utf8");
+var templatesSrc = fs.readFileSync(templatesJsPath, "utf8");
 
-var window = {};
-var global = window;
+var window = globalThis;
+eval(templatesSrc);
 eval(src);
 
-var api = window.kindel3090;
+var api = globalThis.kindel3090;
 
 function assert(cond, msg) {
   if (!cond) {
@@ -29,6 +33,62 @@ function assertEqual(a, b, msg) {
     process.exit(1);
   }
 }
+
+function readJson(rel) {
+  return JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
+}
+
+console.log("Testing template bundle...");
+assert(!builder.isBundleStale(), "js/templates.js is stale; run node scripts/build-templates.js");
+
+var manifest = readJson("templates/index.json");
+var manifestResult = api.validateManifest(manifest);
+assert(manifestResult.valid, "manifest should validate: " + manifestResult.error);
+assertEqual(manifest.default, "product-senior", "default template id");
+var defaultEntry = manifest.templates.find(function (t) { return t.id === manifest.default; });
+assert(defaultEntry, "default entry exists");
+assertEqual(defaultEntry.level, "senior", "default level tag");
+assertEqual(defaultEntry["function"], "product", "default function tag");
+
+var template = readJson("templates/product-senior.json");
+var templateResult = api.validateTemplate(template);
+assert(templateResult.valid, "product-senior should validate: " + templateResult.error);
+
+var bundle = api.getBundle();
+assert(bundle, "bundle should load");
+assertEqual(api.getDefaultTemplate().id, "product-senior", "runtime default is product-senior");
+
+var extraBundle = JSON.parse(JSON.stringify(bundle));
+extraBundle.manifest.templates.push({
+  id: "extra",
+  file: "extra.json",
+  label: "Extra",
+  level: "junior",
+  "function": "technical"
+});
+extraBundle.templates.extra = {
+  kind: "kindel.30-60-90.template",
+  version: 1,
+  id: "extra",
+  level: "junior",
+  "function": "technical",
+  horizons: template.horizons,
+  lenses: template.lenses
+};
+api.setBundle(extraBundle);
+assertEqual(api.getDefaultTemplate().id, "product-senior", "a second manifest entry does not change the default");
+api.setBundle(bundle);
+
+console.log("Testing template text stays out of app JS...");
+["Land", "End users", "Start Formulating Plan", "Objective & criteria", "Ship has Turned"].forEach(function (needle) {
+  assert(src.indexOf(needle) < 0, "app JS must not contain " + JSON.stringify(needle));
+});
+
+var facetSets = readJson("templates/facet-sets.json");
+assert(facetSets.sets.hardware, "facet-sets has hardware");
+assert(facetSets.sets.general, "facet-sets has general");
+assert(facetSets.sets.hardware.lenses.technical.indexOf("Operations/supply") >= 0, "hardware set kept");
+assert(facetSets.sets.general.lenses.customer.indexOf("People we serve") >= 0, "general set kept");
 
 console.log("Testing createNewPlan...");
 var plan = api.createNewPlan({
@@ -50,29 +110,46 @@ assertEqual(plan.manager.name, "John Smith", "manager name");
 assertEqual(plan.include180, false, "include180");
 assertEqual(plan.horizons.length, 3, "should have 3 horizons");
 assertEqual(plan.lenses.length, 4, "should have 4 lenses");
+assert(plan.template && plan.template.id === "product-senior", "plan records template id");
 
 assertEqual(plan.horizons[0].id, "d30", "first horizon id");
 assertEqual(plan.horizons[0].offsetDays, 30, "first horizon offset");
 assertEqual(plan.horizons[0].date, "2024-07-01", "first horizon date");
 assertEqual(plan.horizons[1].date, "2024-07-31", "second horizon date");
 assertEqual(plan.horizons[2].date, "2024-08-30", "third horizon date");
+assertEqual(plan.horizons[0].name, template.horizons[0].name, "d30 name from template");
+assertEqual(plan.horizons[1].name, template.horizons[1].name, "d60 name from template");
+assertEqual(plan.horizons[2].name, template.horizons[2].name, "d90 name from template");
 
 assertEqual(plan.lenses[0].id, "customer", "first lens is customer");
 assertEqual(plan.lenses[1].id, "business", "second lens is business");
 assertEqual(plan.lenses[2].id, "technical", "third lens is technical");
 assertEqual(plan.lenses[3].id, "organization", "fourth lens is organization");
+assertEqual(plan.lenses[0].facets.length, 2, "customer has two starter facets");
+assertEqual(plan.lenses[0].facets[0].name, "End users", "first customer facet");
+assertEqual(plan.lenses[0].facets[1].name, "Partners", "second customer facet");
+assertEqual(plan.lenses[1].facets[0].name, "Finance", "first business facet");
+assertEqual(plan.lenses[1].facets[1].name, "Strategy", "second business facet");
+assertEqual(plan.lenses[2].facets[0].name, "Architecture", "first technical facet");
+assertEqual(plan.lenses[2].facets[1].name, "Quality", "second technical facet");
+assertEqual(plan.lenses[3].facets[0].name, "People", "first organization facet");
+assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "second organization facet");
+
+var blank = api.createNewPlan({ startDate: "2024-06-01" });
+assertEqual(blank.seat.title, "", "blank plan may have an empty seat title");
+var blankValidation = api.validatePlan(blank);
+assert(blankValidation.valid, "blank plan should validate");
 
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({
   seatTitle: "SVP Engineering",
-  family: "general",
   startDate: "2024-01-15",
   include180: true
 });
 
 assertEqual(plan180.horizons.length, 4, "should have 4 horizons with include180");
 assertEqual(plan180.horizons[3].id, "d180", "fourth horizon is d180");
-assertEqual(plan180.horizons[3].name, "Ship has Turned", "180 day name");
+assertEqual(plan180.horizons[3].name, "Ship has Turned", "180 day name from template");
 
 console.log("Testing validatePlan...");
 var result = api.validatePlan(plan);
@@ -83,20 +160,59 @@ result = api.validatePlan(badPlan);
 assert(!result.valid, "wrong kind should not validate");
 assert(result.error.indexOf("kindel.30-60-90") >= 0, "error should mention kind");
 
+console.log("Testing v1 file loading...");
+var v1 = readJson("fixtures/v1-plan.json");
+var v1Result = api.validatePlan(v1);
+assert(v1Result.valid, "v1 fixture should validate: " + v1Result.error);
+assertEqual(v1.version, 1, "v1 version");
+assert(!v1.template, "v1 fixture has no template field");
+var v1Customer = v1.lenses.find(function (l) { return l.id === "customer"; });
+assert(v1Customer.facets.some(function (f) { return f.name === "End-customer"; }), "v1 facets preserved");
+
 console.log("Testing pressureTestCell...");
+function flagTypes(flags) {
+  return flags.map(function (f) { return f.type; }).join(",");
+}
+
 var flags = api.pressureTestCell({ objective: "Do something", criteria: "", tactics: "", status: "" });
 assertEqual(flags.length, 1, "should flag empty criteria with objective");
-assert(flags[0].indexOf("criteria is empty") >= 0, "flag message about empty criteria");
+assertEqual(flags[0].type, "empty-criteria", "empty-criteria type");
+assert(flags[0].message.indexOf("criteria is empty") >= 0, "flag message about empty criteria");
 
 flags = api.pressureTestCell({ objective: "", criteria: "Meet with the PMs", tactics: "", status: "" });
 assertEqual(flags.length, 1, "should flag tactic-like criteria");
-assert(flags[0].indexOf("tactic") >= 0, "flag message about tactics");
+assertEqual(flags[0].type, "tactic-like", "tactic-like type");
+assert(flags[0].message.indexOf("tactic") >= 0, "flag message about tactics");
 
 flags = api.pressureTestCell({ objective: "", criteria: "Attend the all-hands", tactics: "", status: "" });
 assertEqual(flags.length, 1, "should flag Attend");
 
 flags = api.pressureTestCell({ objective: "", criteria: "Read the documentation", tactics: "", status: "" });
 assertEqual(flags.length, 1, "should flag Read");
+
+flags = api.pressureTestCell({ objective: "", criteria: "Shadow a support call", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag Shadow");
+
+flags = api.pressureTestCell({ objective: "", criteria: "Visit 3 customers", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag Visit");
+
+flags = api.pressureTestCell({ objective: "", criteria: "Sit with FP&A", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag Sit with");
+
+flags = api.pressureTestCell({ objective: "", criteria: "Set up the dashboard", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag Set up");
+
+flags = api.pressureTestCell({ objective: "", criteria: "I will meet the PMs", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag I will + activity");
+
+flags = api.pressureTestCell({ objective: "", criteria: "I'll review the tickets", tactics: "", status: "" });
+assertEqual(flags.length, 1, "should flag I'll + activity");
+
+flags = api.pressureTestCell({ objective: "", criteria: "Meet the PMs so I learn", tactics: "", status: "" });
+assertEqual(flags.length, 1, "old / i [a-z]/ leak should be gone");
+
+flags = api.pressureTestCell({ objective: "", criteria: "I can name our top 10 customers", tactics: "", status: "" });
+assertEqual(flags.length, 0, "should not flag I can");
 
 flags = api.pressureTestCell({ objective: "", criteria: "I can enumerate the 15 programs", tactics: "", status: "" });
 assertEqual(flags.length, 0, "should not flag first-person criteria");
@@ -107,8 +223,53 @@ assertEqual(flags.length, 0, "should not flag I've");
 flags = api.pressureTestCell({ objective: "", criteria: "I have documented the architecture", tactics: "", status: "" });
 assertEqual(flags.length, 0, "should not flag I have");
 
-flags = api.pressureTestCell({ objective: "Ship the feature", criteria: "I can demo the feature to stakeholders", tactics: "Write code", status: "" });
+flags = api.pressureTestCell({ objective: "", criteria: "I know our defect trends", tactics: "", status: "" });
+assertEqual(flags.length, 0, "should not flag I know");
+
+flags = api.pressureTestCell({ objective: "", criteria: "My plan cites customer input", tactics: "", status: "" });
+assertEqual(flags.length, 0, "should not flag My …");
+
+flags = api.pressureTestCell({ objective: "", criteria: "The CEO has reviewed my priorities", tactics: "", status: "" });
+assertEqual(flags.length, 0, "should not flag Someone has …");
+
+flags = api.pressureTestCell({
+  objective: "Ship the feature",
+  criteria: "I can demo the feature to stakeholders",
+  tactics: "Write code",
+  status: ""
+});
 assertEqual(flags.length, 0, "valid cell should have no flags");
+
+flags = api.pressureTestCell({
+  objective: "Assess talent",
+  criteria: "I can name strengths\nMeet every skip-level",
+  tactics: "",
+  status: ""
+});
+assertEqual(flags.length, 1, "flags per line");
+assertEqual(flags[0].lineIndex, 1, "second criterion is the tactic");
+
+flags = api.pressureTestCell({
+  objective: "Assess talent",
+  criteria: "Meet every skip-level",
+  tactics: "",
+  dismissed: [0],
+  status: ""
+});
+assertEqual(flags.length, 0, "dismissed tactic line is kept");
+
+assert(api.lineLooksLikeTactic("Meet with the PMs"), "Meet with the PMs is a tactic");
+assert(!api.lineLooksLikeTactic("I can name our top 10 customers"), "I can name is not a tactic");
+assert(api.lineLooksLikeTactic("I will meet the PMs"), "I will meet is a tactic");
+
+console.log("Testing dateManual...");
+var dated = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+dated.horizons[0].dateManual = true;
+dated.horizons[0].date = "2024-12-25";
+api.recomputeHorizonDates(dated, "2024-07-01");
+assertEqual(dated.startDate, "2024-07-01", "start date updated");
+assertEqual(dated.horizons[0].date, "2024-12-25", "manual date stays put");
+assertEqual(dated.horizons[1].date, "2024-08-30", "auto date moves");
 
 console.log("Testing exportMarkdown...");
 plan.lenses[0].facets[0].cells.d30 = {
@@ -119,19 +280,18 @@ plan.lenses[0].facets[0].cells.d30 = {
 };
 
 var md = api.exportMarkdown(plan);
-assert(md.indexOf("# 30-60-90 Plan") >= 0, "markdown has title");
-assert(md.indexOf("**Seat:** VP Product") >= 0, "markdown has seat");
+assert(md.indexOf("# 30-60-90: VP Product") >= 0, "markdown has title");
 assert(md.indexOf("**Hire:** Jane Doe") >= 0, "markdown has person");
 assert(md.indexOf("## Customer") >= 0, "markdown has Customer lens");
-assert(md.indexOf("### End-customer") >= 0, "markdown has End-customer facet");
+assert(md.indexOf("### End users") >= 0, "markdown has End users facet");
 assert(md.indexOf("Understand the customer") >= 0, "markdown has objective");
-assert(md.indexOf("I can name the top 5 customer segments") >= 0, "markdown has criteria");
-assert(md.indexOf("- Review customer data") >= 0, "markdown has tactics as bullets");
+assert(md.indexOf("✓ I can name the top 5 customer segments") >= 0, "markdown has ✓ criteria");
+assert(md.indexOf("▪ Review customer data") >= 0, "markdown has ▪ tactics");
+assert(md.indexOf("**Status:**") < 0, "markdown omits Status by default");
 
 console.log("Testing exportMarkdown with status-only cell...");
 var statusOnlyPlan = api.createNewPlan({
   seatTitle: "Test Role",
-  family: "pm",
   startDate: "2024-06-01"
 });
 statusOnlyPlan.lenses[0].facets[0].cells.d30 = {
@@ -141,7 +301,21 @@ statusOnlyPlan.lenses[0].facets[0].cells.d30 = {
   status: "Completed"
 };
 var statusMd = api.exportMarkdown(statusOnlyPlan);
-assert(statusMd.indexOf("Completed") >= 0, "markdown includes status-only cells");
+assert(statusMd.indexOf("Completed") < 0, "status-only cell omitted when Status is hidden");
+statusMd = api.exportMarkdown(statusOnlyPlan, { includeStatus: true });
+assert(statusMd.indexOf("Completed") >= 0, "markdown includes status when toggled on");
+
+console.log("Testing markdown Plan check...");
+var flaggedPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+flaggedPlan.lenses[3].facets[0].cells.d60 = {
+  objective: "Assess talent",
+  criteria: "Meet with the PMs",
+  tactics: "",
+  status: ""
+};
+var flaggedMd = api.exportMarkdown(flaggedPlan);
+assert(flaggedMd.indexOf("## Plan check") >= 0, "hire-facing markdown includes Plan check");
+assert(flaggedMd.indexOf("Meet with the PMs") >= 0, "Plan check names the line");
 
 console.log("Testing exportXlsx...");
 var wb = api.exportXlsx(plan);
@@ -212,26 +386,25 @@ assertEqual(users3.cells.d30.objective, "Know them", "3-col objective");
 assertEqual(users3.cells.d30.status, "", "3-col status is empty (no column)");
 
 console.log("Testing computeHorizons...");
-var horizons = api.computeHorizons("2024-03-01", false);
+var horizons = api.computeHorizons("2024-03-01", false, template);
 assertEqual(horizons.length, 3, "3 horizons without 180");
 assertEqual(horizons[0].date, "2024-03-31", "30 days from March 1");
 assertEqual(horizons[1].date, "2024-04-30", "60 days from March 1");
 assertEqual(horizons[2].date, "2024-05-30", "90 days from March 1");
 
-horizons = api.computeHorizons("2024-03-01", true);
+horizons = api.computeHorizons("2024-03-01", true, template);
 assertEqual(horizons.length, 4, "4 horizons with 180");
 assertEqual(horizons[3].date, "2024-08-28", "180 days from March 1");
 
 console.log("Testing buildLenses...");
-var pmLenses = api.buildLenses("pm", horizons);
-assertEqual(pmLenses.length, 4, "pm has 4 lenses");
-assert(pmLenses[0].facets.some(function (f) { return f.name === "End-customer"; }), "pm has End-customer");
+var productLenses = api.buildLenses(template, horizons);
+assertEqual(productLenses.length, 4, "template has 4 lenses");
+assert(productLenses[0].facets.some(function (f) { return f.name === "End users"; }), "template has End users");
+assert(!productLenses[0].facets.some(function (f) { return f.name === "End-customer"; }), "blank plan does not load the v1 family list");
 
-var hwLenses = api.buildLenses("hardware", horizons);
-assert(hwLenses[2].facets.some(function (f) { return f.name === "Operations/supply"; }), "hardware has Operations/supply");
-
-var genLenses = api.buildLenses("general", horizons);
-assert(genLenses[0].facets.some(function (f) { return f.name === "People we serve"; }), "general has People we serve");
+var filled = api.pressureTestPlan(flaggedPlan);
+assert(filled.length >= 1, "pressureTestPlan feeds Plan check");
+assert(filled[0].lensId, "issues include ids for Fix");
 
 console.log("");
 console.log("All tests passed!");
