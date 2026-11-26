@@ -50,9 +50,17 @@ assert(defaultEntry, "default entry exists");
 assertEqual(defaultEntry.level, "senior", "default level tag");
 assertEqual(defaultEntry["function"], "product", "default function tag");
 
-var template = readJson("templates/product-senior.json");
-var templateResult = api.validateTemplate(template);
-assert(templateResult.valid, "product-senior should validate: " + templateResult.error);
+var template;
+manifest.templates.forEach(function (entry) {
+  var t = readJson("templates/" + entry.file);
+  var result = api.validateTemplate(t);
+  assert(result.valid, entry.id + " should validate: " + result.error);
+  assertEqual(t.id, entry.id, entry.id + " id matches manifest");
+  assertEqual(t.level, entry.level, entry.id + " level matches manifest");
+  assertEqual(t["function"], entry["function"], entry.id + " function matches manifest");
+  if (entry.id === manifest.default) template = t;
+});
+assert(template, "default template file loaded");
 
 var bundle = api.getBundle();
 assert(bundle, "bundle should load");

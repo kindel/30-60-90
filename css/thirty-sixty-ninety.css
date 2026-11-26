@@ -395,6 +395,10 @@ body {
   overflow: visible;
 }
 
+.tsn-facet-kicker {
+  display: none;
+}
+
 .tsn-facet-name {
   font-weight: 600;
   min-height: 1.2em;
@@ -596,6 +600,15 @@ body {
   margin: 0 0 0.3rem;
 }
 
+.tsn-flag-text {
+  font-size: 0.85rem;
+  margin: 0 0 0.35rem;
+}
+
+.tsn-panel-flags {
+  margin: 0.85rem 0 0;
+}
+
 .tsn-flag-actions {
   display: flex;
   flex-wrap: wrap;
@@ -739,6 +752,7 @@ body {
   right: 0;
   font-size: 1.4rem;
   cursor: pointer;
+  z-index: 2;
 }
 
 .tsn-panel-help,
@@ -899,16 +913,84 @@ body {
 }
 
 @media (max-width: 900px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   .tsn-host {
-    padding: 0.75rem 0.75rem 3rem;
+    padding: 0.6rem 0.6rem 3rem;
+  }
+
+  .tsn-toolbar {
+    gap: 0.35rem;
+  }
+
+  .tsn-btn,
+  .tsn-narrow-tab {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 0.45rem 0.7rem;
+    touch-action: manipulation;
+  }
+
+  .tsn-status-toggle {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .tsn-title-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.35rem 0.75rem;
+  }
+
+  .tsn-title-row h1 {
+    font-size: 1.15rem;
+    line-height: 1.3;
+  }
+
+  .tsn-people-link {
+    margin-left: 0;
+    min-height: 44px;
   }
 
   .tsn-narrow-tabs {
     display: flex;
+    width: 100%;
+  }
+
+  .tsn-narrow-tab {
+    flex: 1;
+  }
+
+  .tsn-table-wrap {
+    overflow: visible;
+  }
+
+  .tsn-grid,
+  .tsn-grid colgroup,
+  .tsn-grid thead,
+  .tsn-grid tbody,
+  .tsn-grid tr {
+    display: block;
+    width: 100%;
+    min-width: 0;
   }
 
   .tsn-grid {
-    min-width: 0;
+    font-size: 14px;
+  }
+
+  .tsn-grid colgroup {
+    display: none;
+  }
+
+  .tsn-h1 .tsn-corner,
+  .tsn-h2,
+  .tsn-lens-cell,
+  .tsn-cell-pad,
+  .tsn-drag {
+    display: none !important;
   }
 
   .tsn-grid th[data-horizon-col],
@@ -920,23 +1002,167 @@ body {
   .tsn-host[data-narrow-horizon="d60"] .tsn-grid [data-horizon-col="d60"],
   .tsn-host[data-narrow-horizon="d90"] .tsn-grid [data-horizon-col="d90"],
   .tsn-host[data-narrow-horizon="d180"] .tsn-grid [data-horizon-col="d180"] {
-    display: table-cell;
+    display: block;
   }
 
-  .tsn-corner,
-  .tsn-lens-cell,
+  .tsn-h-group {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tsn-facet-row,
+  .tsn-add-row,
+  .tsn-lens-group.is-collapsed .tsn-facet-row {
+    border-bottom: 1px solid var(--kld-line);
+  }
+
+  .tsn-facet-kicker {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--kld-rust);
+    margin: 0 0 0.15rem;
+  }
+
+  .tsn-facet-letter {
+    font-size: 0.95rem;
+  }
+
   .tsn-facet-cell {
-    position: sticky;
-    left: 0;
-    z-index: 3;
+    display: block;
+    position: relative;
+    left: auto;
+    width: auto;
+    text-align: left;
+    padding: 0.55rem 2.75rem 0.35rem 0.75rem;
   }
 
-  .tsn-facet-cell {
-    left: 3rem;
+  .tsn-facet-name {
+    display: inline-block;
+    padding-right: 0;
+    font-size: 16px;
   }
 
-  .tsn-title-row h1 {
+  .tsn-cell,
+  .tsn-cell-oc,
+  .tsn-cell-tac,
+  .tsn-cell-status {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .tsn-cell-hints {
+    display: none;
+  }
+
+  .tsn-cell-oc::before,
+  .tsn-cell-tac::before,
+  .tsn-cell-status::before {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--kld-muted);
+    margin: 0 0 0.2rem;
+  }
+
+  .tsn-cell-oc::before {
+    content: "Objective & criteria";
+  }
+
+  .tsn-cell-tac::before {
+    content: "Tactics";
+  }
+
+  .tsn-cell-status::before {
+    content: "Status";
+  }
+
+  .tsn-cell-edit,
+  .tsn-line-text {
+    pointer-events: none;
+  }
+
+  .tsn-facet-name,
+  .tsn-expand,
+  .tsn-cell-flags,
+  .tsn-flag-actions,
+  .tsn-flag-actions .tsn-btn {
+    pointer-events: auto;
+  }
+
+  .tsn-expand {
+    opacity: 1;
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+    top: 0;
+    right: 0;
+  }
+
+  .tsn-facet-x {
+    opacity: 1;
+    min-width: 44px;
+    min-height: 44px;
     font-size: 1.25rem;
+  }
+
+  .tsn-add-facet {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 0.45rem 0;
+  }
+
+  .tsn-flag-card {
+    padding: 0.55rem;
+  }
+
+  .tsn-flag-text {
+    font-size: 0.9rem;
+    margin: 0 0 0.45rem;
+  }
+
+  .tsn-flag-actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tsn-flag-actions .tsn-btn {
+    min-height: 44px;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  .tsn-panel {
+    width: 100%;
+    inset: 0;
+    height: 100%;
+    height: 100dvh;
+    border-left: 0;
+    padding: max(0.85rem, env(safe-area-inset-top)) 1rem calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .tsn-panel-close {
+    width: 44px;
+    height: 44px;
+    font-size: 1.6rem;
+  }
+
+  .tsn-panel textarea,
+  .tsn-panel input,
+  .tsn-people-panel input,
+  .tsn-facet-name,
+  .tsn-seat-title {
+    font-size: 16px;
+  }
+
+  .tsn-legend {
+    font-size: 0.78rem;
   }
 }
 

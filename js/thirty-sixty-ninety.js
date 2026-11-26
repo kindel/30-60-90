@@ -851,6 +851,10 @@
     return typeof location !== "undefined" && location.protocol === "file:";
   }
 
+  function isNarrow() {
+    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+  }
+
   function loadTemplates(done) {
     var bundled = getBundle();
     function finish(bundle) {
@@ -929,7 +933,7 @@
       }
       self.bindRootEvents();
       self.render();
-      if (self.fresh) self.focusFirstCell();
+      if (self.fresh && !isNarrow()) self.focusFirstCell();
     });
   };
 
@@ -1004,6 +1008,7 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.onCellMouseDown = function (e) {
+    if (isNarrow()) return;
     var cell = e.target.closest(".tsn-cell");
     if (!cell || e.target.closest(".tsn-line-text") || e.target.closest("[data-action]")) return;
     var field = cell.getAttribute("data-field");
@@ -1016,9 +1021,9 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.onClick = function (e) {
-    if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) {
+    if (isNarrow()) {
       var mobileCell = e.target.closest(".tsn-cell");
-      if (mobileCell && !e.target.closest("[data-action]") && mobileCell.getAttribute("data-field") && mobileCell.getAttribute("data-field") !== "pad") {
+      if (mobileCell && !e.target.closest("[data-action]") && !e.target.closest(".tsn-flag-card") && mobileCell.getAttribute("data-field") && mobileCell.getAttribute("data-field") !== "pad") {
         e.preventDefault();
         this.openPanel(mobileCell.getAttribute("data-lens"), mobileCell.getAttribute("data-facet"), mobileCell.getAttribute("data-horizon"));
         return;
@@ -1058,17 +1063,20 @@
       return;
     }
     if (action === "save") {
+      this.commitAllEdits();
       downloadJson(this.plan);
       this.setDirty(false);
       this.saveDraft();
       return;
     }
     if (action === "export-xlsx") {
+      this.commitAllEdits();
       try { downloadXlsx(this.plan); }
       catch (err) { alert("Could not export XLSX: " + err.message); }
       return;
     }
     if (action === "export-md") {
+      this.commitAllEdits();
       this.withPlanCheck(function () {
         downloadMarkdown(self.plan, { includeStatus: self.showStatus });
       });
@@ -1251,6 +1259,7 @@
     }
     if (t.classList.contains("tsn-panel-field")) {
       this.syncPanelToCell();
+      this.refreshPanelFlags();
       return;
     }
     var cellEl = t.closest(".tsn-cell");
@@ -1457,10 +1466,19 @@
 
   ThirtySixtyNinetyEditor.prototype.commitAllEdits = function () {
     var self = this;
+    var panel = this.panel;
     this.root.querySelectorAll(".tsn-cell.is-editing, .tsn-cell .tsn-cell-edit").forEach(function (el) {
       var cell = el.classList.contains("tsn-cell") ? el : el.closest(".tsn-cell");
-      if (cell) self.syncCellFromDom(cell, true);
+      if (!cell) return;
+      if (panel &&
+          cell.getAttribute("data-lens") === panel.lensId &&
+          cell.getAttribute("data-facet") === panel.facetId &&
+          cell.getAttribute("data-horizon") === panel.horizonId) {
+        return;
+      }
+      self.syncCellFromDom(cell, true);
     });
+    this.syncPanelToCell();
   };
 
   ThirtySixtyNinetyEditor.prototype.insertLine = function (edit, kind) {
@@ -1595,6 +1613,18 @@
     this.focusCell(c.lensId, c.facetId, c.horizonId, c.field);
   };
 
+  function flagCardHtml(flag) {
+    return '<div class="tsn-flag-card" data-line="' + flag.lineIndex + '">' +
+      '<div class="tsn-flag-note">That\'s a tactic.</div>' +
+      (flag.text ? '<div class="tsn-flag-text">' + esc(flag.text) + "</div>" : "") +
+      '<div class="tsn-flag-actions">' +
+        '<button type="button" class="tsn-btn tsn-btn-primary" data-action="move-tactic">Move to Tactics</button>' +
+        '<button type="button" class="tsn-btn" data-action="rewrite-ican">Rewrite as I can…</button>' +
+        '<button type="button" class="tsn-btn" data-action="keep-line">Keep</button>' +
+      "</div>" +
+    "</div>";
+  }
+
   ThirtySixtyNinetyEditor.prototype.refreshCellFlags = function (cellEl) {
     var lensId = cellEl.getAttribute("data-lens");
     var facetId = cellEl.getAttribute("data-facet");
@@ -1614,31 +1644,42 @@
       if (flag.type !== "tactic-like") return;
       var line = critLines[flag.lineIndex];
       if (line) line.classList.add("is-amber");
-      if (host) {
-        host.insertAdjacentHTML("beforeend",
-          '<div class="tsn-flag-card" data-line="' + flag.lineIndex + '">' +
-            '<div class="tsn-flag-note">That\'s a tactic.</div>' +
-            '<div class="tsn-flag-actions">' +
-              '<button type="button" class="tsn-btn tsn-btn-primary" data-action="move-tactic">Move to Tactics</button>' +
-              '<button type="button" class="tsn-btn" data-action="rewrite-ican">Rewrite as I can…</button>' +
-              '<button type="button" class="tsn-btn" data-action="keep-line">Keep</button>' +
-            "</div>" +
-          "</div>");
-      }
+      if (host) host.insertAdjacentHTML("beforeend", flagCardHtml(flag));
     });
+  };
+
+  ThirtySixtyNinetyEditor.prototype.refreshPanelFlags = function () {
+    if (!this.panel) return;
+    var host = this.root.querySelector(".tsn-panel-flags");
+    if (!host) return;
+    var cell = getCell(this.plan, this.panel.lensId, this.panel.facetId, this.panel.horizonId);
+    var flags = pressureTestCell(cell);
+    host.innerHTML = flags.filter(function (flag) { return flag.type === "tactic-like"; }).map(flagCardHtml).join("");
   };
 
   ThirtySixtyNinetyEditor.prototype.redirectLine = function (el, mode) {
     var cellEl = el.closest(".tsn-cell");
     var card = el.closest(".tsn-flag-card");
-    if (!cellEl || !card) return;
+    if (!card) return;
     var lineIndex = parseInt(card.getAttribute("data-line"), 10);
-    var lensId = cellEl.getAttribute("data-lens");
-    var facetId = cellEl.getAttribute("data-facet");
-    var horizonId = cellEl.getAttribute("data-horizon");
+    var lensId;
+    var facetId;
+    var horizonId;
+    if (cellEl) {
+      lensId = cellEl.getAttribute("data-lens");
+      facetId = cellEl.getAttribute("data-facet");
+      horizonId = cellEl.getAttribute("data-horizon");
+    } else if (this.panel) {
+      lensId = this.panel.lensId;
+      facetId = this.panel.facetId;
+      horizonId = this.panel.horizonId;
+    } else {
+      return;
+    }
     var cell = getCell(this.plan, lensId, facetId, horizonId);
     var crits = splitLines(cell.criteria);
     if (lineIndex < 0 || lineIndex >= crits.length) return;
+    var fromPanel = !cellEl && !!this.panel;
     if (mode === "move") {
       var moved = crits.splice(lineIndex, 1)[0];
       cell.criteria = crits.join("\n");
@@ -1651,8 +1692,18 @@
         if (!cell.dismissed.length) delete cell.dismissed;
       }
       this.touch();
-      this.render();
-      this.focusCell(lensId, facetId, horizonId, "tactics");
+      if (fromPanel || isNarrow()) {
+        this.panel = { lensId: lensId, facetId: facetId, horizonId: horizonId };
+        this.render();
+        var tacBox = this.root.querySelector(".tsn-panel-tac");
+        if (tacBox) {
+          tacBox.focus();
+          tacBox.setSelectionRange(tacBox.value.length, tacBox.value.length);
+        }
+      } else {
+        this.render();
+        this.focusCell(lensId, facetId, horizonId, "tactics");
+      }
       return;
     }
     if (mode === "rewrite") {
@@ -1660,8 +1711,18 @@
       cell.criteria = crits.join("\n");
       pruneDismissals(cell);
       this.touch();
-      this.renderCellPair(lensId, facetId, horizonId);
-      this.focusCell(lensId, facetId, horizonId, "oc", lineIndex + 1);
+      if (fromPanel || isNarrow()) {
+        this.panel = { lensId: lensId, facetId: facetId, horizonId: horizonId };
+        this.render();
+        var critBox = this.root.querySelector(".tsn-panel-crit");
+        if (critBox) {
+          critBox.focus();
+          critBox.setSelectionRange(critBox.value.length, critBox.value.length);
+        }
+      } else {
+        this.renderCellPair(lensId, facetId, horizonId);
+        this.focusCell(lensId, facetId, horizonId, "oc", lineIndex + 1);
+      }
       return;
     }
     if (mode === "keep") {
@@ -1671,7 +1732,8 @@
       if (!cell.dismissedText) cell.dismissedText = [];
       if (!dismissedTextSet(cell)[normLine(kept)]) cell.dismissedText.push(kept);
       this.touch();
-      this.refreshCellFlags(cellEl);
+      if (cellEl) this.refreshCellFlags(cellEl);
+      this.refreshPanelFlags();
     }
   };
 
@@ -1960,9 +2022,12 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.openPanel = function (lensId, facetId, horizonId) {
+    this.syncPanelToCell();
     this.commitAllEdits();
     this.panel = { lensId: lensId, facetId: facetId, horizonId: horizonId };
-    this.render({ keepFocus: true });
+    this.render();
+    var first = this.root.querySelector(".tsn-panel-obj");
+    if (first) first.focus();
   };
 
   ThirtySixtyNinetyEditor.prototype.closePanel = function () {
@@ -1983,6 +2048,7 @@
     if (crit) cell.criteria = crit.value;
     if (tac) cell.tactics = tac.value;
     if (st) cell.status = st.value;
+    pruneDismissals(cell);
     this.touch();
   };
 
@@ -2166,6 +2232,7 @@
 
     var facetRows = lens.facets.map(function (facet, fi) {
       var facetCell = '<th class="tsn-facet-cell">' +
+        '<span class="tsn-facet-kicker"><span class="tsn-facet-letter">' + letter + "</span> " + esc(lens.name) + "</span>" +
         '<span class="tsn-drag" draggable="true" data-drag-facet="1" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Reorder">⋮⋮</span>' +
         '<div class="tsn-facet-name tsn-editable" contenteditable="true" data-lens="' + lens.id + '" data-facet="' + facet.id + '" data-placeholder="Facet">' + esc(facet.name) + "</div>" +
         '<button type="button" class="tsn-facet-x" data-action="remove-facet" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Remove facet">×</button>' +
@@ -2294,9 +2361,7 @@
       "<label>Tactics<div class=\"tsn-panel-note\">" + esc(help.tactics || "") + "</div>" +
         '<textarea class="tsn-panel-field tsn-panel-tac" rows="4">' + esc(cell.tactics) + "</textarea></label>" +
       (this.showStatus ? '<label>Status<textarea class="tsn-panel-field tsn-panel-status" rows="2">' + esc(cell.status) + "</textarea></label>" : "") +
-      (flags.length ? '<div class="tsn-panel-flags">' + flags.map(function (f) {
-        return '<div class="tsn-flag-note">' + esc(f.message) + (f.text ? " " + esc(f.text) : "") + "</div>";
-      }).join("") + "</div>" : "") +
+      '<div class="tsn-panel-flags">' + flags.filter(function (f) { return f.type === "tactic-like"; }).map(flagCardHtml).join("") + "</div>" +
       '<div class="tsn-examples">' +
         (example ? '<div class="tsn-example is-good"><div class="tsn-example-label">Example</div>' +
           "<p><strong>" + esc(example.objective || "") + "</strong></p>" +
