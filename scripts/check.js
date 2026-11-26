@@ -393,6 +393,19 @@ api.pruneDismissals(keptCell);
 assert(!keptCell.dismissed, "prune drops Keep when the text is gone");
 assertEqual(api.pressureTestCell(keptCell).length, 1, "pruned Keep re-flags");
 
+var shifted = {
+  objective: "",
+  criteria: "I can name them\nMeet every skip-level",
+  tactics: "",
+  dismissed: [1],
+  dismissedText: ["Meet every skip-level"],
+  status: ""
+};
+shifted.criteria = "New criterion\nI can name them\nMeet every skip-level";
+api.pruneDismissals(shifted);
+assertEqual(shifted.dismissed.join(","), "2", "Keep remaps to the same criterion after insert");
+assertEqual(api.pressureTestCell(shifted).length, 0, "remapped Keep still dismissed");
+
 assert(api.lineLooksLikeTactic("Meet with the PMs"), "Meet with the PMs is a tactic");
 assert(!api.lineLooksLikeTactic("I can name our top 10 customers"), "I can name is not a tactic");
 assert(api.lineLooksLikeTactic("I will meet the PMs"), "I will meet is a tactic");
@@ -404,6 +417,85 @@ assertEqual(api.splitLines("-5% churn").join("|"), "-5% churn", "leading minus i
 assertEqual(api.splitLines("- cut churn").join("|"), "cut churn", "dash plus space is a bullet");
 assertEqual(api.splitLines("✓ I can name them").join("|"), "I can name them", "check bullet strips");
 assertEqual(api.splitLines("▪ Ride support calls").join("|"), "Ride support calls", "square bullet strips");
+
+console.log("Testing nextTabTarget...");
+var tabA = { id: "a" };
+var tabB = { id: "b" };
+var tabC = { id: "c" };
+assertEqual(api.nextTabTarget([tabA, tabB, tabC], tabA, false), tabB, "Tab moves forward");
+assertEqual(api.nextTabTarget([tabA, tabB, tabC], tabC, false), tabA, "Tab wraps to first");
+assertEqual(api.nextTabTarget([tabA, tabB, tabC], tabA, true), tabC, "Shift+Tab wraps to last");
+assertEqual(api.nextTabTarget([tabA, tabB, tabC], null, false), tabA, "Tab from outside goes to first");
+
+console.log("Testing requestOpenFile...");
+var Editor = globalThis.ThirtySixtyNinetyEditor;
+assert(Editor, "editor constructor is exported");
+var openClicks = 0;
+var openConfirms = 0;
+var fakeOpen = {
+  dirty: true,
+  openMenuOpen: true,
+  root: {
+    querySelector: function (sel) {
+      if (sel === ".tsn-open-menu") return { hidden: false };
+      return { click: function () { openClicks += 1; } };
+    }
+  },
+  askConfirm: function (msg, label, fn) {
+    openConfirms += 1;
+    fakeOpen._confirmMsg = msg;
+    fakeOpen._confirmFn = fn;
+  }
+};
+Editor.prototype.requestOpenFile.call(fakeOpen, "#tsn-file-json");
+assertEqual(openClicks, 0, "dirty open does not click the picker yet");
+assertEqual(openConfirms, 1, "dirty open asks first");
+assertEqual(fakeOpen.openMenuOpen, false, "open menu closes before the confirm");
+fakeOpen._confirmFn();
+assertEqual(openClicks, 1, "confirm proceeds to the picker");
+openClicks = 0;
+openConfirms = 0;
+fakeOpen.dirty = false;
+Editor.prototype.requestOpenFile.call(fakeOpen, "#tsn-file-xlsx");
+assertEqual(openClicks, 1, "clean open clicks the picker");
+assertEqual(openConfirms, 0, "clean open does not ask");
+
+console.log("Testing preparePrint...");
+var printRenders = [];
+var fakePrint = {
+  _printing: false,
+  showStatus: true,
+  collapsedLenses: { customer: true, business: true },
+  commitAllEdits: function () { fakePrint.committed = true; },
+  render: function (opts) {
+    printRenders.push({
+      collapsed: Object.keys(this.collapsedLenses).filter(function (id) { return this.collapsedLenses[id]; }, this).join(","),
+      keepFocus: !!(opts && opts.keepFocus),
+      printStatus: this.root.classList._printStatus
+    });
+  },
+  root: {
+    classList: {
+      _printStatus: false,
+      toggle: function (name, on) {
+        if (name === "tsn-print-status") fakePrint.root.classList._printStatus = !!on;
+      }
+    }
+  }
+};
+Editor.prototype.preparePrint.call(fakePrint);
+assert(fakePrint.committed, "print commits edits first");
+assertEqual(printRenders.length, 1, "print renders once");
+assertEqual(printRenders[0].collapsed, "", "print expands every lens");
+assert(fakePrint.root.classList._printStatus, "print shows Status when toggled on");
+Editor.prototype.preparePrint.call(fakePrint);
+assertEqual(printRenders.length, 1, "print prepare is idempotent");
+Editor.prototype.restoreAfterPrint.call(fakePrint);
+assertEqual(printRenders.length, 2, "print restore re-renders");
+assertEqual(printRenders[1].collapsed, "customer,business", "print restore puts collapse back");
+assert(printRenders[1].keepFocus, "print restore keeps focus");
+Editor.prototype.restoreAfterPrint.call(fakePrint);
+assertEqual(printRenders.length, 2, "print restore is idempotent");
 
 console.log("Testing dateManual...");
 var dated = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });

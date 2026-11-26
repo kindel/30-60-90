@@ -83,6 +83,35 @@
       .filter(function (l) { return l.length > 0; });
   }
 
+  function modalFocusables(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return [];
+    var nodes = root.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])");
+    var out = [];
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.disabled) continue;
+      if (el.getAttribute("aria-hidden") === "true") continue;
+      out.push(el);
+    }
+    return out;
+  }
+
+  function nextTabTarget(items, current, shift) {
+    if (!items || !items.length) return null;
+    var idx = -1;
+    var i;
+    for (i = 0; i < items.length; i++) {
+      if (items[i] === current) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return shift ? items[items.length - 1] : items[0];
+    if (shift) return items[(idx - 1 + items.length) % items.length];
+    return items[(idx + 1) % items.length];
+  }
+
   function getBundle() {
     if (activeBundle) return activeBundle;
     if (typeof KINDEL_TEMPLATES !== "undefined" && KINDEL_TEMPLATES) return KINDEL_TEMPLATES;
@@ -1081,9 +1110,17 @@
       }
     });
 
-    window.addEventListener("beforeprint", function () {
-      self.root.classList.toggle("tsn-print-status", self.showStatus);
-    });
+    window.addEventListener("beforeprint", function () { self.preparePrint(); });
+    window.addEventListener("afterprint", function () { self.restoreAfterPrint(); });
+    if (window.matchMedia) {
+      var printMq = window.matchMedia("print");
+      var onPrintMq = function (e) {
+        if (e.matches) self.preparePrint();
+        else self.restoreAfterPrint();
+      };
+      if (printMq.addEventListener) printMq.addEventListener("change", onPrintMq);
+      else if (printMq.addListener) printMq.addListener(onPrintMq);
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.onCellMouseDown = function (e) {
@@ -1132,13 +1169,11 @@
       return;
     }
     if (action === "open-json") {
-      this.openMenuOpen = false;
-      this.root.querySelector("#tsn-file-json").click();
+      this.requestOpenFile("#tsn-file-json");
       return;
     }
     if (action === "import-xlsx") {
-      this.openMenuOpen = false;
-      this.root.querySelector("#tsn-file-xlsx").click();
+      this.requestOpenFile("#tsn-file-xlsx");
       return;
     }
     if (action === "start-blank") {
@@ -2019,6 +2054,45 @@
     });
   };
 
+  ThirtySixtyNinetyEditor.prototype.requestOpenFile = function (inputId) {
+    var self = this;
+    this.openMenuOpen = false;
+    var menu = this.root.querySelector(".tsn-open-menu");
+    if (menu) menu.hidden = true;
+    var go = function () {
+      var input = self.root.querySelector(inputId);
+      if (input) input.click();
+    };
+    if (!this.dirty) {
+      go();
+      return;
+    }
+    this.askConfirm("Replace the open plan with a file? Unsaved edits will be overwritten.", "Open", go);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.preparePrint = function () {
+    if (this._printing) return;
+    this._printing = true;
+    this.commitAllEdits();
+    this._printCollapsed = {};
+    Object.keys(this.collapsedLenses || {}).forEach(function (id) {
+      this._printCollapsed[id] = this.collapsedLenses[id];
+    }, this);
+    this.collapsedLenses = {};
+    if (this.root && this.root.classList) {
+      this.root.classList.toggle("tsn-print-status", !!this.showStatus);
+    }
+    this.render();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.restoreAfterPrint = function () {
+    if (!this._printing) return;
+    this._printing = false;
+    this.collapsedLenses = this._printCollapsed || {};
+    this._printCollapsed = null;
+    this.render({ keepFocus: true });
+  };
+
   ThirtySixtyNinetyEditor.prototype.openJsonFile = function (input) {
     var self = this;
     var file = input.files[0];
@@ -2084,14 +2158,15 @@
       return "<li>" + esc(formatIssueLine(issue)) + "</li>";
     }).join("");
     this.showModal(
-      "<h2>Plan check</h2>" +
+      "<h2 id=\"tsn-modal-title\">Plan check</h2>" +
       "<p>These cells still need work. Redirect a tactic; do not leave a hire with a to-do list.</p>" +
       "<ul class=\"tsn-check-list\">" + items + "</ul>" +
       "<div class=\"tsn-confirm-actions\">" +
         "<button type=\"button\" class=\"tsn-btn\" data-action=\"plan-check-cancel\">Cancel</button>" +
         "<button type=\"button\" class=\"tsn-btn\" data-action=\"plan-check-fix\">Fix</button>" +
         "<button type=\"button\" class=\"tsn-btn tsn-btn-primary\" data-action=\"plan-check-anyway\">Export anyway</button>" +
-      "</div>"
+      "</div>",
+      { label: "Plan check", labelledBy: "tsn-modal-title" }
     );
   };
 
@@ -2106,25 +2181,77 @@
   ThirtySixtyNinetyEditor.prototype.askConfirm = function (message, okLabel, onOk) {
     this._confirmOk = onOk;
     this.showModal(
-      "<p>" + esc(message) + "</p>" +
+      "<p id=\"tsn-modal-title\">" + esc(message) + "</p>" +
       "<div class=\"tsn-confirm-actions\">" +
         "<button type=\"button\" class=\"tsn-btn\" data-action=\"confirm-cancel\">Cancel</button>" +
         "<button type=\"button\" class=\"tsn-btn tsn-btn-primary\" data-action=\"confirm-ok\">" + esc(okLabel || "OK") + "</button>" +
-      "</div>"
+      "</div>",
+      { label: message, labelledBy: "tsn-modal-title" }
     );
   };
 
-  ThirtySixtyNinetyEditor.prototype.showModal = function (inner) {
-    this.closeModal();
+  ThirtySixtyNinetyEditor.prototype.showModal = function (inner, opts) {
+    opts = opts || {};
+    if (!this._modalFocus && typeof document !== "undefined") this._modalFocus = document.activeElement;
+    this.closeModal({ keepFocus: true });
+    var label = opts.label || "Dialog";
+    var labelledBy = opts.labelledBy || "tsn-modal-title";
     this.root.insertAdjacentHTML("beforeend",
-      '<div class="tsn-confirm" role="dialog">' +
+      '<div class="tsn-confirm" role="dialog" aria-modal="true" aria-label="' + esc(label) + '" aria-labelledby="' + esc(labelledBy) + '">' +
         '<div class="tsn-confirm-box">' + inner + "</div>" +
       "</div>");
+    var dialog = this.root.querySelector(".tsn-confirm");
+    this.armModal(dialog);
+    var items = modalFocusables(dialog);
+    if (items[0] && items[0].focus) items[0].focus();
   };
 
-  ThirtySixtyNinetyEditor.prototype.closeModal = function () {
-    var modal = this.root.querySelector(".tsn-confirm");
+  ThirtySixtyNinetyEditor.prototype.armModal = function (dialog) {
+    this.disarmModal();
+    if (!dialog || typeof document === "undefined") return;
+    this._modalKey = function (e) {
+      if (e.key !== "Tab") return;
+      if (dialog.isConnected === false) return;
+      var items = modalFocusables(dialog);
+      if (!items.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var next = nextTabTarget(items, document.activeElement, e.shiftKey);
+      if (next && next.focus) next.focus();
+    };
+    this._modalFocusIn = function (e) {
+      if (dialog.isConnected === false) return;
+      if (dialog.contains(e.target)) return;
+      var items = modalFocusables(dialog);
+      if (items[0] && items[0].focus) items[0].focus();
+    };
+    document.addEventListener("keydown", this._modalKey, true);
+    document.addEventListener("focusin", this._modalFocusIn);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.disarmModal = function () {
+    if (typeof document === "undefined") {
+      this._modalKey = null;
+      this._modalFocusIn = null;
+      return;
+    }
+    if (this._modalKey) document.removeEventListener("keydown", this._modalKey, true);
+    if (this._modalFocusIn) document.removeEventListener("focusin", this._modalFocusIn);
+    this._modalKey = null;
+    this._modalFocusIn = null;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.closeModal = function (opts) {
+    opts = opts || {};
+    this.disarmModal();
+    var modal = this.root && this.root.querySelector(".tsn-confirm");
     if (modal) modal.remove();
+    if (opts.keepFocus) return;
+    var back = this._modalFocus;
+    this._modalFocus = null;
+    if (back && typeof back.focus === "function") {
+      try { back.focus(); } catch (e) {}
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.openPanel = function (lensId, facetId, horizonId) {
@@ -2501,6 +2628,7 @@
     setBundle: setBundle,
     loadTemplates: loadTemplates,
     splitLines: splitLines,
+    nextTabTarget: nextTabTarget,
     pruneDismissals: pruneDismissals,
     hydratePlanDismissals: hydratePlanDismissals,
     planHasCellContent: planHasCellContent,
