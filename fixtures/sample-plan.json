@@ -14,6 +14,10 @@
   },
   "startDate": "2024-06-01",
   "include180": false,
+  "template": {
+    "id": "product-senior",
+    "version": 1
+  },
   "horizons": [
     {
       "id": "d30",
@@ -24,13 +28,13 @@
     {
       "id": "d60",
       "offsetDays": 60,
-      "name": "Understand Direction",
+      "name": "Understand Direction; Sense Big Problems",
       "date": "2024-07-31"
     },
     {
       "id": "d90",
       "offsetDays": 90,
-      "name": "Grasp Current Condition / Set Next Challenge",
+      "name": "Start Formulating Plan",
       "date": "2024-08-30"
     }
   ],
@@ -40,8 +44,8 @@
       "name": "Customer",
       "facets": [
         {
-          "id": "end-customer",
-          "name": "End-customer",
+          "id": "end-users",
+          "name": "End users",
           "cells": {
             "d30": {
               "objective": "Understand who the end-customer is",
@@ -64,121 +68,25 @@
           }
         },
         {
-          "id": "dealers-users-of-the-product",
-          "name": "Dealers/users of the product",
+          "id": "partners",
+          "name": "Partners",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Meet partners",
+              "criteria": "I can name our top 5 partners.",
+              "tactics": "Meet top 5 partners",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Hear issues",
+              "criteria": "I can say why partners leave.",
+              "tactics": "Join partner QBRs",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "3rd-parties",
-          "name": "3rd parties",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "people",
-          "name": "People",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "programs",
-          "name": "Programs",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "mechanisms",
-          "name": "Mechanisms",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Win support",
+              "criteria": "Top partners have reviewed my plan.",
+              "tactics": "Preview plan",
               "status": ""
             }
           }
@@ -200,111 +108,15 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Spot the drains",
+              "criteria": "I can name our 3 biggest cost drains.",
+              "tactics": "Review spend by team",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "marketing",
-          "name": "Marketing",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "biz-dev",
-          "name": "Biz Dev",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "m-a",
-          "name": "M&A",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "goals",
-          "name": "Goals",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Fund the plan",
+              "criteria": "Finance has accepted my plan's budget.",
+              "tactics": "Draft budget",
               "status": ""
             }
           }
@@ -314,69 +126,21 @@
           "name": "Strategy",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Learn the goals",
+              "criteria": "I can state the top 3 company goals.",
+              "tactics": "Read strategy docs",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "See the gaps",
+              "criteria": "I can name 3 gaps in our strategy.",
+              "tactics": "Interview exec staff",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "people",
-          "name": "People",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "mechanisms",
-          "name": "Mechanisms",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Set priorities",
+              "criteria": "The CEO has reviewed my priorities.",
+              "tactics": "Write priorities doc",
               "status": ""
             }
           }
@@ -398,183 +162,39 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Find the risks",
+              "criteria": "I can name the 3 biggest tech risks.",
+              "tactics": "Read incident log",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Set direction",
+              "criteria": "My leads have critiqued my tech direction.",
+              "tactics": "Draft tech direction",
               "status": ""
             }
           }
         },
         {
-          "id": "cloud-software",
-          "name": "Cloud/software",
+          "id": "quality",
+          "name": "Quality",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Know the baseline",
+              "criteria": "I know our defect and outage trends.",
+              "tactics": "Pull defect dashboards",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Find root causes",
+              "criteria": "I can explain our top 3 quality issues.",
+              "tactics": "Join post-mortems",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "device-firmware",
-          "name": "Device/firmware",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "hardware",
-          "name": "Hardware",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "development",
-          "name": "Development",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "operations",
-          "name": "Operations",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "people",
-          "name": "People",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "mechanisms",
-          "name": "Mechanisms",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Plan the fixes",
+              "criteria": "My plan has quality targets and owners.",
+              "tactics": "Set targets with leads",
               "status": ""
             }
           }
@@ -596,111 +216,15 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Assess talent",
+              "criteria": "I can name the strengths of each skip-level leader.",
+              "tactics": "Hold skip-levels",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "culture",
-          "name": "Culture",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "org-design",
-          "name": "Org design",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "career-growth",
-          "name": "Career growth",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            }
-          }
-        },
-        {
-          "id": "hiring",
-          "name": "Hiring",
-          "cells": {
-            "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
-              "status": ""
-            },
-            "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Shape the org",
+              "criteria": "My manager has seen my org proposal.",
+              "tactics": "Draft org proposal",
               "status": ""
             }
           }
@@ -710,21 +234,21 @@
           "name": "Mechanisms",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Learn the rhythm",
+              "criteria": "I know every recurring review and owner.",
+              "tactics": "Attend every review",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "See how work flows",
+              "criteria": "I can say where decisions get made.",
+              "tactics": "Sit in the weekly ops review",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Own a mechanism",
+              "criteria": "I have taken ownership of one recurring review.",
+              "tactics": "Write the operating cadence",
               "status": ""
             }
           }

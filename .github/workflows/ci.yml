@@ -35,4 +35,8 @@ jobs:
           test -f fixtures/sample-plan.xlsx
           test -f fixtures/historical-format.xlsx
           test -f fixtures/old-format-with-180.xlsx
+          test -f fixtures/v1-plan.json
+          test -f templates/index.json
+          test -f templates/product-senior.json
+          test -f js/templates.js
           echo "All fixtures present"

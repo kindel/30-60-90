@@ -1,0 +1,323 @@
+{
+  "kind": "kindel.30-60-90.template",
+  "version": 1,
+  "id": "product-senior",
+  "label": "Senior product leader",
+  "seatTitle": "VP of Product",
+  "level": "senior",
+  "function": "product",
+  "include180": false,
+  "columns": {
+    "objective": "Objective & criteria",
+    "tactics": "Tactics",
+    "status": "Status"
+  },
+  "hints": {
+    "objective": "Objective",
+    "criteria": "I can …",
+    "tactics": "Tactic",
+    "status": "Status"
+  },
+  "horizons": [
+    {
+      "id": "d30",
+      "offsetDays": 30,
+      "name": "Land",
+      "help": "Learn the system. Frequent feedback."
+    },
+    {
+      "id": "d60",
+      "offsetDays": 60,
+      "name": "Understand Direction; Sense Big Problems",
+      "help": "Contribute to real work with guardrails."
+    },
+    {
+      "id": "d90",
+      "offsetDays": 90,
+      "name": "Start Formulating Plan",
+      "help": "Own something real enough to show how you operate."
+    },
+    {
+      "id": "d180",
+      "offsetDays": 180,
+      "name": "Ship has Turned",
+      "optional": true,
+      "help": "You are running the seat. The plan is how you operate, not how you land."
+    }
+  ],
+  "help": {
+    "criteria": "First person, checkable: I can…, I know…, I have…",
+    "tactics": "What you'll do to get there: meetings, reading, deliverables.",
+    "badCriterion": "Meet with the PMs"
+  },
+  "lenses": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "help": "Who we serve and why they buy.",
+      "suggestedFacets": [
+        "Dealers/users of the product",
+        "3rd parties",
+        "Programs"
+      ],
+      "facets": [
+        {
+          "id": "end-users",
+          "name": "End users",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Know who buys",
+                "criteria": "I can name our top 10 customers.",
+                "tactics": "Ride 5 support calls\nRead top reviews"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Find their pain",
+                "criteria": "I can list their top 3 complaints.",
+                "tactics": "Visit 3 customers\nMine tickets"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Set direction",
+                "criteria": "My plan cites customer input.",
+                "tactics": "Draft customer memo"
+              }
+            }
+          }
+        },
+        {
+          "id": "partners",
+          "name": "Partners",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Meet partners",
+                "criteria": "I can name our top 5 partners.",
+                "tactics": "Meet top 5 partners"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Hear issues",
+                "criteria": "I can say why partners leave.",
+                "tactics": "Join partner QBRs"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Win support",
+                "criteria": "Top partners have reviewed my plan.",
+                "tactics": "Preview plan"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "help": "How we make money and where we are going.",
+      "suggestedFacets": [
+        "Marketing",
+        "Biz Dev",
+        "M&A",
+        "Goals"
+      ],
+      "facets": [
+        {
+          "id": "finance",
+          "name": "Finance",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Know the P&L",
+                "criteria": "I can explain margin by product line.",
+                "tactics": "Read 2 board decks\nSit with FP&A"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Spot the drains",
+                "criteria": "I can name our 3 biggest cost drains.",
+                "tactics": "Review spend by team"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Fund the plan",
+                "criteria": "Finance has accepted my plan's budget.",
+                "tactics": "Draft budget"
+              }
+            }
+          }
+        },
+        {
+          "id": "strategy",
+          "name": "Strategy",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the goals",
+                "criteria": "I can state the top 3 company goals.",
+                "tactics": "Read strategy docs"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "See the gaps",
+                "criteria": "I can name 3 gaps in our strategy.",
+                "tactics": "Interview exec staff"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Set priorities",
+                "criteria": "The CEO has reviewed my priorities.",
+                "tactics": "Write priorities doc"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "name": "Technical",
+      "help": "How the product is built and how well it runs.",
+      "suggestedFacets": [
+        "Cloud/software",
+        "Device/firmware",
+        "Hardware",
+        "Development",
+        "Operations"
+      ],
+      "facets": [
+        {
+          "id": "architecture",
+          "name": "Architecture",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the system",
+                "criteria": "I can whiteboard the architecture.",
+                "tactics": "Arch review with leads"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Find the risks",
+                "criteria": "I can name the 3 biggest tech risks.",
+                "tactics": "Read incident log"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Set direction",
+                "criteria": "My leads have critiqued my tech direction.",
+                "tactics": "Draft tech direction"
+              }
+            }
+          }
+        },
+        {
+          "id": "quality",
+          "name": "Quality",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Know the baseline",
+                "criteria": "I know our defect and outage trends.",
+                "tactics": "Pull defect dashboards"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Find root causes",
+                "criteria": "I can explain our top 3 quality issues.",
+                "tactics": "Join post-mortems"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Plan the fixes",
+                "criteria": "My plan has quality targets and owners.",
+                "tactics": "Set targets with leads"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "name": "Organization",
+      "help": "The people and the mechanisms they work through.",
+      "suggestedFacets": [
+        "Culture",
+        "Org design",
+        "Career growth",
+        "Hiring"
+      ],
+      "facets": [
+        {
+          "id": "people",
+          "name": "People",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Meet the team",
+                "criteria": "I know every manager by name and role.",
+                "tactics": "1:1 with every manager"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Assess talent",
+                "criteria": "I can name the strengths of each skip-level leader.",
+                "tactics": "Hold skip-levels"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Shape the org",
+                "criteria": "My manager has seen my org proposal.",
+                "tactics": "Draft org proposal"
+              }
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the rhythm",
+                "criteria": "I know every recurring review and owner.",
+                "tactics": "Attend every review"
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "See how work flows",
+                "criteria": "I can say where decisions get made.",
+                "tactics": "Sit in the weekly ops review"
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Own a mechanism",
+                "criteria": "I have taken ownership of one recurring review.",
+                "tactics": "Write the operating cadence"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
