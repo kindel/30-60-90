@@ -22,6 +22,7 @@ var KINDEL_TEMPLATES = {
       "version": 1,
       "id": "product-senior",
       "label": "Senior product leader",
+      "seatTitle": "VP of Product",
       "level": "senior",
       "function": "product",
       "include180": false,

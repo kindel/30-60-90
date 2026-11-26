@@ -61,6 +61,17 @@ manifest.templates.forEach(function (entry) {
   if (entry.id === manifest.default) template = t;
 });
 assert(template, "default template file loaded");
+assert(template.seatTitle, "default template has a seat title");
+["d30", "d60", "d90"].forEach(function (hid) {
+  template.lenses.forEach(function (lens) {
+    (lens.facets || []).forEach(function (facet) {
+      var ex = facet.cells && facet.cells[hid] && facet.cells[hid].example;
+      assert(ex && String(ex.objective || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs an example objective");
+      assert(ex && String(ex.criteria || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example criteria");
+      assert(ex && String(ex.tactics || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example tactics");
+    });
+  });
+});
 
 var bundle = api.getBundle();
 assert(bundle, "bundle should load");
@@ -143,10 +154,33 @@ assertEqual(plan.lenses[2].facets[1].name, "Quality", "second technical facet");
 assertEqual(plan.lenses[3].facets[0].name, "People", "first organization facet");
 assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "second organization facet");
 
-var blank = api.createNewPlan({ startDate: "2024-06-01" });
-assertEqual(blank.seat.title, "", "blank plan may have an empty seat title");
-var blankValidation = api.validatePlan(blank);
-assert(blankValidation.valid, "blank plan should validate");
+var endUsersD30 = plan.lenses[0].facets[0].cells.d30;
+assertEqual(endUsersD30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "new plan copies example objective");
+assertEqual(endUsersD30.criteria, template.lenses[0].facets[0].cells.d30.example.criteria, "new plan copies example criteria");
+assertEqual(endUsersD30.tactics, template.lenses[0].facets[0].cells.d30.example.tactics, "new plan copies example tactics");
+assert(api.planHasCellContent(plan), "filled new plan has cell content");
+
+["d30", "d60", "d90"].forEach(function (hid) {
+  plan.lenses.forEach(function (lens) {
+    lens.facets.forEach(function (facet) {
+      var cell = facet.cells[hid];
+      assert(cell && cell.objective && cell.criteria && cell.tactics,
+        lens.id + "/" + facet.id + "/" + hid + " is filled from the template");
+    });
+  });
+});
+
+var defaulted = api.createNewPlan({ startDate: "2024-06-01" });
+assertEqual(defaulted.seat.title, template.seatTitle, "new plan uses the template seat title");
+var defaultedValidation = api.validatePlan(defaulted);
+assert(defaultedValidation.valid, "filled new plan should validate");
+
+var emptied = api.createNewPlan({ startDate: "2024-06-01", fillExamples: false, seatTitle: "" });
+assertEqual(emptied.seat.title, "", "Start blank may have an empty seat title");
+assert(!api.planHasCellContent(emptied), "fillExamples false leaves cells empty");
+assert(emptied.template && emptied.template.id === "product-senior", "blank plan still records the template");
+var emptiedValidation = api.validatePlan(emptied);
+assert(emptiedValidation.valid, "empty plan should validate");
 
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({

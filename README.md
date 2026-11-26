@@ -2,11 +2,11 @@
 
 An interactive app that writes a 30-60-90 plan document. The product is the document. It is not a tracker.
 
-The app opens on the plan itself: a blank CBTO grid that fills in as you type. There is no setup form.
+The app opens on the plan itself: the default template filled in as editable text. There is no setup form.
 
 ## What it does
 
-1. **Blank grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), two starter facets each, and Day 30 / 60 / 90. Ghost hints disappear when you type.
+1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), two starter facets each, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm. Opening a saved JSON file loads that file.
 2. **Edit in place:** The first line of a cell is the objective. Enter adds a checkable criterion. Tab moves to Tactics. Status stays hidden until you toggle it on.
 3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Move it to Tactics, rewrite it as "I can…", or keep it. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
 4. **Open:** Load an existing `.json` plan file, or import a historical XLSX from under Open. The app rejects files that are not `kindel.30-60-90`. v1 files still open.
@@ -39,7 +39,7 @@ Excel is an export format, not a reload format. The XLSX export matches the hist
 
 ## Templates
 
-Starter names, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default. 2.0 ships one file, `templates/product-senior.json`.
+Starter names, the default seat title, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default. 2.0 ships one file, `templates/product-senior.json`. A new plan copies those examples into the cells.
 
 Over http the app fetches those JSON files. `index.html` still opens from disk: under `file://`, fetch is blocked, so the app falls back to `js/templates.js`, which `scripts/build-templates.js` generates. `scripts/check.js` fails when that bundle is stale.
 

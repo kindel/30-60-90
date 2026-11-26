@@ -135,7 +135,7 @@ Blank-plan content is not part of the plan schema. It lives in:
 
 A template uses the same grid shape as a plan (`horizons` and `lenses → facets → cells`) but cells hold `hint` and `example` instead of the user's text. Dates are not stored. The app computes them from the start date.
 
-Hints are never saved into the plan. Example text enters a plan only when the author clicks **Use this** in the focused editor.
+A new plan copies each cell's example into the grid as editable text. **Start blank** clears that writing and keeps the template id. Opening a JSON file loads that file. Hints are never saved into the plan. **Use this** in the focused editor still copies one cell's example.
 
 ## Family defaults (v1)
 

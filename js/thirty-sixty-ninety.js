@@ -260,7 +260,27 @@
     return cells;
   }
 
-  function buildLenses(template, horizons) {
+  function cellFromExample(example) {
+    var ex = example || {};
+    return {
+      objective: ex.objective || "",
+      criteria: ex.criteria || "",
+      tactics: ex.tactics || "",
+      status: ex.status || ""
+    };
+  }
+
+  function cellsFromTemplateFacet(facet, horizons, fillExamples) {
+    var cells = {};
+    (horizons || []).forEach(function (h) {
+      var src = facet && facet.cells && facet.cells[h.id];
+      cells[h.id] = fillExamples ? cellFromExample(src && src.example) : emptyCell();
+    });
+    return cells;
+  }
+
+  function buildLenses(template, horizons, opts) {
+    var fillExamples = !!(opts && opts.fillExamples);
     var lensIndex = {};
     ((template && template.lenses) || []).forEach(function (l) {
       if (l && l.id) lensIndex[l.id] = l;
@@ -271,7 +291,7 @@
         return {
           id: f.id || slugify(f.name) || ("facet-" + Date.now()),
           name: f.name || "",
-          cells: emptyCells(horizons)
+          cells: cellsFromTemplateFacet(f, horizons, fillExamples)
         };
       });
       return {
@@ -282,6 +302,18 @@
     });
   }
 
+  function planHasCellContent(plan) {
+    var found = false;
+    ((plan && plan.lenses) || []).forEach(function (lens) {
+      (lens.facets || []).forEach(function (facet) {
+        Object.keys(facet.cells || {}).forEach(function (hid) {
+          if (cellHasContent(facet.cells[hid])) found = true;
+        });
+      });
+    });
+    return found;
+  }
+
   function createNewPlan(opts) {
     opts = opts || {};
     var template = opts.template || getDefaultTemplate(opts.bundle);
@@ -289,11 +321,13 @@
     var include180 = opts.include180 != null ? !!opts.include180 : !!template.include180;
     var startDate = opts.startDate || iso(new Date());
     var horizons = computeHorizons(startDate, include180, template);
+    var fillExamples = opts.fillExamples !== false;
+    var seatTitle = opts.seatTitle != null ? opts.seatTitle : (template.seatTitle || "");
     return {
       version: VERSION,
       kind: KIND,
       seat: {
-        title: opts.seatTitle || "",
+        title: seatTitle,
         family: opts.family || familyFromTemplate(template)
       },
       person: { name: opts.personName || "", role: "hire" },
@@ -302,7 +336,7 @@
       include180: include180,
       template: { id: template.id, version: template.version },
       horizons: horizons,
-      lenses: buildLenses(template, horizons)
+      lenses: buildLenses(template, horizons, { fillExamples: fillExamples })
     };
   }
 
@@ -933,7 +967,7 @@
       }
       self.bindRootEvents();
       self.render();
-      if (self.fresh && !isNarrow()) self.focusFirstCell();
+      if (self.fresh && !isNarrow() && !planHasCellContent(self.plan)) self.focusFirstCell();
     });
   };
 
@@ -1060,6 +1094,10 @@
     if (action === "import-xlsx") {
       this.openMenuOpen = false;
       this.root.querySelector("#tsn-file-xlsx").click();
+      return;
+    }
+    if (action === "start-blank") {
+      this.startBlank();
       return;
     }
     if (action === "save") {
@@ -1915,6 +1953,26 @@
     else go();
   };
 
+  ThirtySixtyNinetyEditor.prototype.startBlank = function () {
+    var self = this;
+    this.commitAllEdits();
+    if (!planHasCellContent(this.plan)) return;
+    this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", function () {
+      self.plan.lenses.forEach(function (lens) {
+        (lens.facets || []).forEach(function (facet) {
+          Object.keys(facet.cells || {}).forEach(function (hid) {
+            facet.cells[hid] = emptyCell();
+          });
+        });
+      });
+      self.fresh = true;
+      self.panel = null;
+      self.touch();
+      self.render();
+      if (!isNarrow()) self.focusFirstCell();
+    });
+  };
+
   ThirtySixtyNinetyEditor.prototype.openJsonFile = function (input) {
     var self = this;
     var file = input.files[0];
@@ -2144,6 +2202,7 @@
       '      <button type="button" data-action="import-xlsx">Import XLSX</button>',
       "    </div>",
       "  </div>",
+      '  <button type="button" class="tsn-btn" data-action="start-blank">Start blank</button>',
       '  <button type="button" class="tsn-btn tsn-btn-save" data-action="save">Save</button>',
       '  <button type="button" class="tsn-btn" data-action="export-xlsx">Export XLSX</button>',
       '  <button type="button" class="tsn-btn" data-action="export-md">Export Markdown</button>',
@@ -2191,7 +2250,7 @@
       "</div>",
       '<div class="tsn-grid-footer">',
       has180 ? "" : '  <button type="button" class="tsn-add-180" data-action="add-180">+ Add 180 days</button>',
-      '  <p class="tsn-legend">Dashed underline = editable · Bold = Key Objective · ✓ = Evaluation Criterion · ▪ = Tactic · Gray italic = hint until you type · Status is hidden until toggled.</p>',
+      '  <p class="tsn-legend">Dashed underline = editable · Bold = Key Objective · ✓ = Evaluation Criterion · ▪ = Tactic · Gray italic = hint on empty cells · Start blank clears the writing · Status is hidden until toggled.</p>',
       "</div>",
       issues.length ? '<div class="tsn-print-check"><h2>Plan check</h2><ul>' + issues.map(function (issue) {
         return "<li>" + esc(formatIssueLine(issue)) + "</li>";
@@ -2395,7 +2454,8 @@
     loadTemplates: loadTemplates,
     splitLines: splitLines,
     pruneDismissals: pruneDismissals,
-    hydratePlanDismissals: hydratePlanDismissals
+    hydratePlanDismissals: hydratePlanDismissals,
+    planHasCellContent: planHasCellContent
   };
 
 })(typeof window !== "undefined" ? window : global);

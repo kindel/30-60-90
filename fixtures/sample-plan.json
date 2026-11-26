@@ -72,21 +72,21 @@
           "name": "Partners",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Meet partners",
+              "criteria": "I can name our top 5 partners.",
+              "tactics": "Meet top 5 partners",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Hear issues",
+              "criteria": "I can say why partners leave.",
+              "tactics": "Join partner QBRs",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Win support",
+              "criteria": "Top partners have reviewed my plan.",
+              "tactics": "Preview plan",
               "status": ""
             }
           }
@@ -108,15 +108,15 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Spot the drains",
+              "criteria": "I can name our 3 biggest cost drains.",
+              "tactics": "Review spend by team",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Fund the plan",
+              "criteria": "Finance has accepted my plan's budget.",
+              "tactics": "Draft budget",
               "status": ""
             }
           }
@@ -126,21 +126,21 @@
           "name": "Strategy",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Learn the goals",
+              "criteria": "I can state the top 3 company goals.",
+              "tactics": "Read strategy docs",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "See the gaps",
+              "criteria": "I can name 3 gaps in our strategy.",
+              "tactics": "Interview exec staff",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Set priorities",
+              "criteria": "The CEO has reviewed my priorities.",
+              "tactics": "Write priorities doc",
               "status": ""
             }
           }
@@ -162,15 +162,15 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Find the risks",
+              "criteria": "I can name the 3 biggest tech risks.",
+              "tactics": "Read incident log",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Set direction",
+              "criteria": "My leads have critiqued my tech direction.",
+              "tactics": "Draft tech direction",
               "status": ""
             }
           }
@@ -180,21 +180,21 @@
           "name": "Quality",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Know the baseline",
+              "criteria": "I know our defect and outage trends.",
+              "tactics": "Pull defect dashboards",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Find root causes",
+              "criteria": "I can explain our top 3 quality issues.",
+              "tactics": "Join post-mortems",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Plan the fixes",
+              "criteria": "My plan has quality targets and owners.",
+              "tactics": "Set targets with leads",
               "status": ""
             }
           }
@@ -216,15 +216,15 @@
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Assess talent",
+              "criteria": "I can name the strengths of each skip-level leader.",
+              "tactics": "Hold skip-levels",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Shape the org",
+              "criteria": "My manager has seen my org proposal.",
+              "tactics": "Draft org proposal",
               "status": ""
             }
           }
@@ -234,21 +234,21 @@
           "name": "Mechanisms",
           "cells": {
             "d30": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Learn the rhythm",
+              "criteria": "I know every recurring review and owner.",
+              "tactics": "Attend every review",
               "status": ""
             },
             "d60": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "See how work flows",
+              "criteria": "I can say where decisions get made.",
+              "tactics": "Sit in the weekly ops review",
               "status": ""
             },
             "d90": {
-              "objective": "",
-              "criteria": "",
-              "tactics": "",
+              "objective": "Own a mechanism",
+              "criteria": "I have taken ownership of one recurring review.",
+              "tactics": "Write the operating cadence",
               "status": ""
             }
           }
