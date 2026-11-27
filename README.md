@@ -6,7 +6,7 @@ The app opens on the plan itself: the default template filled in as editable tex
 
 ## What it does
 
-1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), two starter facets each, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm. Opening a saved JSON file loads that file.
+1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), starter facets including Mechanisms on every lens, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm and keeps a Mechanisms row on every lens. Opening a saved JSON file loads that file.
 2. **Edit in place:** The grid is a spreadsheet. The objective is one cell. Each criterion and each tactic is its own cell. Type to replace. Enter, F2, or double-click to edit. Esc cancels. Arrows move. Tab moves across. Enter on the last criterion or tactic of a facet adds another. Status stays hidden until you toggle it on. On a portrait phone the horizons stay tabbed and you tap a cell to edit it.
 3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Move it to Tactics, rewrite it as "I can…", or keep it. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
 4. **Open:** Load an existing `.json` plan file, or import a historical XLSX from under Open. The app rejects files that are not `kindel.30-60-90`. v1 files still open.

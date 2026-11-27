@@ -406,6 +406,32 @@
     return cells;
   }
 
+  function isMechanismsFacet(facet) {
+    return !!(facet && (facet.id === "mechanisms" || String(facet.name || "").toLowerCase() === "mechanisms"));
+  }
+
+  function mechanismsTemplateFacet(template, lensId) {
+    var src = templateLens(template, lensId);
+    var facets = (src && src.facets) || [];
+    var i;
+    for (i = 0; i < facets.length; i++) {
+      if (isMechanismsFacet(facets[i])) return facets[i];
+    }
+    return { id: "mechanisms", name: "Mechanisms", cells: {} };
+  }
+
+  function ensureMechanismsFacet(lens, horizons, template, fillExamples) {
+    if (!lens) return;
+    if (!lens.facets) lens.facets = [];
+    if (lens.facets.some(isMechanismsFacet)) return;
+    var src = mechanismsTemplateFacet(template, lens.id);
+    lens.facets.push({
+      id: src.id || "mechanisms",
+      name: "Mechanisms",
+      cells: cellsFromTemplateFacet(src, horizons, !!fillExamples)
+    });
+  }
+
   function buildLenses(template, horizons, opts) {
     var fillExamples = !!(opts && opts.fillExamples);
     var lensIndex = {};
@@ -421,11 +447,13 @@
           cells: cellsFromTemplateFacet(f, horizons, fillExamples)
         };
       });
-      return {
+      var lens = {
         id: lensId,
         name: src.name || "",
         facets: facets
       };
+      ensureMechanismsFacet(lens, horizons, template, fillExamples);
+      return lens;
     });
   }
 
@@ -2366,14 +2394,14 @@
   ThirtySixtyNinetyEditor.prototype.startBlank = function () {
     var self = this;
     this.commitAllEdits();
-    if (!planHasCellContent(this.plan)) return;
-    this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", function () {
+    var go = function () {
       self.plan.lenses.forEach(function (lens) {
         (lens.facets || []).forEach(function (facet) {
           Object.keys(facet.cells || {}).forEach(function (hid) {
             facet.cells[hid] = emptyCell();
           });
         });
+        ensureMechanismsFacet(lens, self.plan.horizons, self.template, false);
       });
       self.plan.startedBlank = true;
       self.fresh = true;
@@ -2381,7 +2409,12 @@
       self.touch();
       self.render();
       if (!isNarrow()) self.focusFirstCell();
-    });
+    };
+    if (!planHasCellContent(this.plan)) {
+      go();
+      return;
+    }
+    this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", go);
   };
 
   ThirtySixtyNinetyEditor.prototype.requestOpenFile = function (inputId) {

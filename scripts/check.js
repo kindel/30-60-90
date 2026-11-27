@@ -174,15 +174,28 @@ assertEqual(plan.lenses[0].id, "customer", "first lens is customer");
 assertEqual(plan.lenses[1].id, "business", "second lens is business");
 assertEqual(plan.lenses[2].id, "technical", "third lens is technical");
 assertEqual(plan.lenses[3].id, "organization", "fourth lens is organization");
-assertEqual(plan.lenses[0].facets.length, 2, "customer has two starter facets");
+assertEqual(plan.lenses[0].facets.length, 3, "customer has three starter facets");
 assertEqual(plan.lenses[0].facets[0].name, "End users", "first customer facet");
 assertEqual(plan.lenses[0].facets[1].name, "Partners", "second customer facet");
+assertEqual(plan.lenses[0].facets[2].name, "Mechanisms", "customer starts with Mechanisms");
 assertEqual(plan.lenses[1].facets[0].name, "Finance", "first business facet");
 assertEqual(plan.lenses[1].facets[1].name, "Strategy", "second business facet");
+assertEqual(plan.lenses[1].facets[2].name, "Mechanisms", "business starts with Mechanisms");
 assertEqual(plan.lenses[2].facets[0].name, "Architecture", "first technical facet");
 assertEqual(plan.lenses[2].facets[1].name, "Quality", "second technical facet");
+assertEqual(plan.lenses[2].facets[2].name, "Mechanisms", "technical starts with Mechanisms");
 assertEqual(plan.lenses[3].facets[0].name, "People", "first organization facet");
-assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "second organization facet");
+assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "organization starts with Mechanisms");
+plan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), lens.id + " has a Mechanisms facet");
+});
+var customerMech = plan.lenses[0].facets[2].cells.d30;
+assertEqual(customerMech.objective, "Learn the signal", "customer Mechanisms d30 objective");
+assert(customerMech.tactics.some(function (t) { return t.indexOf("customer-signal") >= 0; }), "customer Mechanisms cites a weekly signal review");
+var businessMech = plan.lenses[1].facets[2].cells.d30;
+assert(businessMech.tactics.some(function (t) { return t.indexOf("MBR") >= 0; }), "business Mechanisms cites the monthly business review");
+var techMech = plan.lenses[2].facets[2].cells.d30;
+assert(techMech.tactics.some(function (t) { return t.indexOf("architecture review") >= 0; }), "technical Mechanisms cites an architecture review");
 
 var endUsersD30 = plan.lenses[0].facets[0].cells.d30;
 assertEqual(endUsersD30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "new plan copies example objective");
@@ -769,6 +782,35 @@ var blankEd = makeEditor(blankPlan);
 blankEd.render();
 assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-crit tsn-cell-lead") >= 0, "empty first criterion keeps the lead class");
 assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-tac tsn-cell-lead") >= 0, "empty first tactic keeps the lead class");
+blankPlan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "blank " + lens.id + " keeps Mechanisms");
+});
+
+var unfilled = api.createNewPlan({ startDate: "2024-06-01", fillExamples: false });
+unfilled.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "unfilled " + lens.id + " still has Mechanisms");
+});
+
+var missingMech = JSON.parse(JSON.stringify(plan));
+missingMech.lenses[0].facets = missingMech.lenses[0].facets.filter(function (f) { return f.name !== "Mechanisms"; });
+var startEd = makeEditor(missingMech);
+startEd.commitAllEdits = function () {};
+startEd.render = function () {};
+startEd.focusFirstCell = function () {};
+startEd.askConfirm = function (msg, label, fn) { fn(); };
+startEd.startBlank();
+assert(startEd.plan.startedBlank, "Start blank marks the plan startedBlank");
+startEd.plan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "Start blank puts Mechanisms on " + lens.id);
+  lens.facets.forEach(function (facet) {
+    Object.keys(facet.cells || {}).forEach(function (hid) {
+      var cell = facet.cells[hid];
+      assert(!cell.objective && !(cell.criteria && cell.criteria.some(Boolean)) && !(cell.tactics && cell.tactics.some(Boolean)),
+        "Start blank clears " + lens.id + "/" + facet.id + "/" + hid);
+    });
+  });
+});
+assert(startEd.plan.lenses[0].facets.some(function (f) { return f.name === "End users"; }), "Start blank keeps End users");
 
 var keep = makeEditor(editorPlan);
 keep.sel = firstCoord(keep.plan, "objective", 0);
@@ -1010,6 +1052,9 @@ var productLenses = api.buildLenses(template, horizons);
 assertEqual(productLenses.length, 4, "template has 4 lenses");
 assert(productLenses[0].facets.some(function (f) { return f.name === "End users"; }), "template has End users");
 assert(!productLenses[0].facets.some(function (f) { return f.name === "End-customer"; }), "blank plan does not load the v1 family list");
+productLenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "buildLenses puts Mechanisms on " + lens.id);
+});
 
 var filled = api.pressureTestPlan(flaggedPlan);
 assert(filled.length >= 1, "pressureTestPlan feeds Plan check");

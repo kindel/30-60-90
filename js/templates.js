@@ -160,6 +160,45 @@ var KINDEL_TEMPLATES = {
                   }
                 }
               }
+            },
+            {
+              "id": "mechanisms",
+              "name": "Mechanisms",
+              "cells": {
+                "d30": {
+                  "example": {
+                    "objective": "Learn the signal",
+                    "criteria": [
+                      "I can name every customer review and owner."
+                    ],
+                    "tactics": [
+                      "Sit in this week's customer-signal review"
+                    ]
+                  }
+                },
+                "d60": {
+                  "example": {
+                    "objective": "See what we miss",
+                    "criteria": [
+                      "I can say which customer pain never reaches the review."
+                    ],
+                    "tactics": [
+                      "Bring tickets to the weekly signal review"
+                    ]
+                  }
+                },
+                "d90": {
+                  "example": {
+                    "objective": "Own the cadence",
+                    "criteria": [
+                      "I have taken ownership of the weekly customer-signal review."
+                    ],
+                    "tactics": [
+                      "Write the signal-review agenda"
+                    ]
+                  }
+                }
+              }
             }
           ]
         },
@@ -252,6 +291,45 @@ var KINDEL_TEMPLATES = {
                   }
                 }
               }
+            },
+            {
+              "id": "mechanisms",
+              "name": "Mechanisms",
+              "cells": {
+                "d30": {
+                  "example": {
+                    "objective": "Learn the MBR",
+                    "criteria": [
+                      "I can name the monthly business review and who runs it."
+                    ],
+                    "tactics": [
+                      "Sit in this month's MBR with Finance"
+                    ]
+                  }
+                },
+                "d60": {
+                  "example": {
+                    "objective": "See the numbers",
+                    "criteria": [
+                      "I can walk the MBR pack without notes."
+                    ],
+                    "tactics": [
+                      "Prep the product page with FP&A"
+                    ]
+                  }
+                },
+                "d90": {
+                  "example": {
+                    "objective": "Own the product page",
+                    "criteria": [
+                      "Finance has accepted my product page in the MBR."
+                    ],
+                    "tactics": [
+                      "Write the monthly product page"
+                    ]
+                  }
+                }
+              }
             }
           ]
         },
@@ -340,6 +418,45 @@ var KINDEL_TEMPLATES = {
                     ],
                     "tactics": [
                       "Set targets with leads"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "mechanisms",
+              "name": "Mechanisms",
+              "cells": {
+                "d30": {
+                  "example": {
+                    "objective": "Learn the cadence",
+                    "criteria": [
+                      "I can name the product-tech reviews and owners."
+                    ],
+                    "tactics": [
+                      "Sit in this week's architecture review"
+                    ]
+                  }
+                },
+                "d60": {
+                  "example": {
+                    "objective": "See the risks",
+                    "criteria": [
+                      "I can say which tech risks never reach the review."
+                    ],
+                    "tactics": [
+                      "Bring incidents to the product-tech review"
+                    ]
+                  }
+                },
+                "d90": {
+                  "example": {
+                    "objective": "Own the review",
+                    "criteria": [
+                      "I have taken ownership of the product-tech review cadence."
+                    ],
+                    "tactics": [
+                      "Write the architecture-review agenda"
                     ]
                   }
                 }
