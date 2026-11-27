@@ -114,6 +114,8 @@ assertEqual(api.NARROW_MAX_PX, 700, "JS narrow max is 700");
 assert(css.indexOf("@media (max-width: 700px)") >= 0, "CSS stacks to tabs at 700px");
 assert(css.indexOf("@media (max-width: 900px)") < 0, "tabs must not kick in at 900px");
 assert(src.indexOf("900px") < 0, "JS must not use 900px as the narrow breakpoint");
+assert(css.indexOf('.tsn-cell-crit:not([data-index="0"])') >= 0, "phone hides extra empty criteria only");
+assert(css.indexOf('.tsn-cell-tac:not([data-index="0"])') >= 0, "phone hides extra empty tactics only");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
@@ -659,6 +661,17 @@ var cust3 = plan3Col.lenses.find(function (l) { return l.id === "customer"; });
 var users3 = cust3.facets.find(function (f) { return f.name === "Users"; });
 assertEqual(users3.cells.d30.objective, "Know them", "3-col objective");
 assertEqual(users3.cells.d30.status, "", "3-col status is empty (no column)");
+
+console.log("Testing XLSX blank criterion slot round-trip...");
+assertEqual(JSON.stringify(api.compactItems(["c1", "", "c3"])), JSON.stringify(["c1", "", "c3"]), "compactItems keeps a middle blank");
+var gapped = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+gapped.lenses[0].facets[0].cells.d30.criteria = ["c1", "", "c3"];
+gapped.lenses[0].facets[0].cells.d30.tactics = ["t1", "t2", "t3"];
+var gappedIn = api.importXlsx(api.exportXlsx(gapped));
+var gappedFacet = gappedIn.lenses[0].facets.find(function (f) { return f.name === gapped.lenses[0].facets[0].name; });
+assert(gappedFacet, "gapped import has the facet");
+assertEqual(JSON.stringify(gappedFacet.cells.d30.criteria), JSON.stringify(["c1", "", "c3"]), "xlsx round-trip keeps a blank criterion slot");
+assertEqual(JSON.stringify(gappedFacet.cells.d30.tactics), JSON.stringify(["t1", "t2", "t3"]), "xlsx round-trip keeps aligned tactics");
 
 console.log("Testing computeHorizons...");
 var horizons = api.computeHorizons("2024-03-01", false, template);

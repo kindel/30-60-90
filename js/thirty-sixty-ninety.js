@@ -938,17 +938,21 @@
       "organization": "organization", "organization/people": "organization"
     };
 
+    function xlsxCellItems(value) {
+      var s = String(value == null ? "" : value);
+      if (s.indexOf("\n") >= 0) return splitLines(s);
+      return [s.replace(/\u00a0/g, " ").trim()];
+    }
+
     function appendHorizonItems(target, row, hc) {
       var baseCol = hc.col;
       var obj = String(row[baseCol] || "").trim();
-      var crits = itemList(row[baseCol + 1]);
-      var tacs = itemList(row[baseCol + 2]);
       var status = colsPerHorizon >= 4 ? String(row[baseCol + 3] || "").trim() : "";
       if (!target.cells[hc.id]) target.cells[hc.id] = emptyCell();
       var cell = target.cells[hc.id];
       if (obj && !String(cell.objective || "").trim()) cell.objective = obj;
-      cell.criteria = compactItems(cell.criteria).concat(crits);
-      cell.tactics = compactItems(cell.tactics).concat(tacs);
+      cell.criteria = (Array.isArray(cell.criteria) ? cell.criteria : xlsxCellItems(cell.criteria)).concat(xlsxCellItems(row[baseCol + 1]));
+      cell.tactics = (Array.isArray(cell.tactics) ? cell.tactics : xlsxCellItems(cell.tactics)).concat(xlsxCellItems(row[baseCol + 2]));
       if (status && !String(cell.status || "").trim()) cell.status = status;
     }
 
@@ -979,8 +983,8 @@
         var baseCol = hc.col;
         cells[hc.id] = {
           objective: String(row[baseCol] || "").trim(),
-          criteria: compactItems(row[baseCol + 1]),
-          tactics: compactItems(row[baseCol + 2]),
+          criteria: xlsxCellItems(row[baseCol + 1]),
+          tactics: xlsxCellItems(row[baseCol + 2]),
           status: colsPerHorizon >= 4 ? String(row[baseCol + 3] || "").trim() : ""
         };
       });
@@ -1571,8 +1575,12 @@
     var next = e.relatedTarget;
     if (next && cell && cell.contains(next)) return;
     this.commitEdit();
-    this.render({ keepFocus: true });
-    this.focusSelected();
+    var self = this;
+    setTimeout(function () {
+      if (!self.root || self.editing || self._rendering) return;
+      self.render({ keepFocus: true });
+      self.focusSelected();
+    }, 0);
   };
 
   ThirtySixtyNinetyEditor.prototype.onPaste = function (e) {
