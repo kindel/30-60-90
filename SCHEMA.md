@@ -70,7 +70,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `title` | string | no | The job title, e.g. "VP Product". Empty on a fresh blank plan. |
-| `family` | string | no | v1 used `"pm"`, `"hardware"`, or `"general"` to pick default facets. New plans still write a family for compatibility. Facets now come from the template. |
+| `family` | string | no | v1 used `"pm"`, `"hardware"`, or `"general"` to pick default facets. New plans still write a family for compatibility: product maps to `"pm"`, engineering writes `"engineering"`. Facets now come from the template. |
 
 ### person
 
@@ -124,7 +124,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 ## Horizon defaults
 
-Default names, offsets, and the optional 180-day column live in `templates/product-senior.json`. The offsets stay 30 / 60 / 90 / 180. Do not copy the names into app JS.
+Default names, offsets, and the optional 180-day column live in the template files. The offsets stay 30 / 60 / 90 / 180. Do not copy the names into app JS.
 
 ## Templates
 
@@ -132,6 +132,7 @@ Blank-plan content is not part of the plan schema. It lives in:
 
 - `templates/index.json`, tagged by `level` and `function`
 - `templates/product-senior.json` (`kind: "kindel.30-60-90.template"`)
+- `templates/engineer-senior.json` (`kind: "kindel.30-60-90.template"`)
 - `templates/facet-sets.json`, the v1 Hardware and GM/SVP facet lists
 
 A template uses the same grid shape as a plan (`horizons` and `lenses → facets → cells`) but cells hold `hint` and `example` instead of the user's text. Dates are not stored. The app computes them from the start date.

@@ -313,6 +313,7 @@
     if (fn === "product") return "pm";
     if (fn === "hardware") return "hardware";
     if (fn === "general") return "general";
+    if (fn === "engineering") return "engineering";
     return "pm";
   }
 
