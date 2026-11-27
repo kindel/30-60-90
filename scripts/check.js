@@ -103,6 +103,13 @@ console.log("Testing template text stays out of app JS...");
   assert(src.indexOf(needle) < 0, "app JS must not contain " + JSON.stringify(needle));
 });
 
+console.log("Testing narrow layout breakpoint...");
+var css = fs.readFileSync(path.join(root, "css", "thirty-sixty-ninety.css"), "utf8");
+assertEqual(api.NARROW_MAX_PX, 700, "JS narrow max is 700");
+assert(css.indexOf("@media (max-width: 700px)") >= 0, "CSS stacks to tabs at 700px");
+assert(css.indexOf("@media (max-width: 900px)") < 0, "tabs must not kick in at 900px");
+assert(src.indexOf("900px") < 0, "JS must not use 900px as the narrow breakpoint");
+
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
 assert(facetSets.sets.general, "facet-sets has general");
