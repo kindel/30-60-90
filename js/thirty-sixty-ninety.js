@@ -1047,10 +1047,29 @@
       "organization": "organization", "organization/people": "organization"
     };
 
+    var oneItemPerCell = false;
+    var di;
+    for (di = 2; di < data.length; di++) {
+      var slotRow = data[di] || [];
+      if (String(slotRow[1] || "").trim()) continue;
+      var slotHasBody = false;
+      var si;
+      for (si = 2; si < slotRow.length; si++) {
+        if (String(slotRow[si] || "").trim()) { slotHasBody = true; break; }
+      }
+      if (slotHasBody) { oneItemPerCell = true; break; }
+    }
+    if (!oneItemPerCell) {
+      oneItemPerCell = row1.some(function (c) {
+        return /\d+\s*days\s+-\s+[a-z]{3,}\s+\d{1,2},\s+\d{4}\s+-/i.test(String(c || ""));
+      });
+    }
+
     function xlsxCellItems(value) {
-      var s = String(value == null ? "" : value);
+      var s = String(value == null ? "" : value).replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
+      if (oneItemPerCell) return [s];
       if (s.indexOf("\n") >= 0) return splitLines(s);
-      return [s.replace(/\u00a0/g, " ").trim()];
+      return [s.trim()];
     }
 
     function appendHorizonItems(target, row, hc) {
@@ -1360,6 +1379,17 @@
         if (actionEl) self._pointerRestore = { action: actionEl.getAttribute("data-action") };
         else if (e.target.classList && e.target.classList.contains("tsn-person-name")) self._pointerRestore = { className: "tsn-person-name" };
         else if (e.target.classList && e.target.classList.contains("tsn-manager-name")) self._pointerRestore = { className: "tsn-manager-name" };
+        else if (e.target.classList && e.target.classList.contains("tsn-seat-title")) {
+          self._pointerRestore = { className: "tsn-seat-title", x: e.clientX, y: e.clientY };
+        } else if (e.target.classList && e.target.classList.contains("tsn-facet-name")) {
+          self._pointerRestore = {
+            className: "tsn-facet-name",
+            lensId: e.target.getAttribute("data-lens"),
+            facetId: e.target.getAttribute("data-facet"),
+            x: e.clientX,
+            y: e.clientY
+          };
+        }
       }
     }, true);
     this.root.addEventListener("mousedown", function (e) { self.onCellMouseDown(e); });
@@ -1718,6 +1748,15 @@
     if (e.target.closest && e.target.closest(".tsn-people-panel")) return;
     if (e.target.classList && (e.target.classList.contains("tsn-start-date-input") || e.target.classList.contains("tsn-horizon-date-input"))) return;
     if (e.target.classList && e.target.classList.contains("tsn-editable") && !e.target.closest(".tsn-cell")) return;
+    if (isNarrow()) {
+      if (e.target.classList && e.target.classList.contains("tsn-cell-input") && e.key !== "Tab") {
+        this.onEditKeydown(e);
+      }
+      if (e.target.closest && e.target.closest(".tsn-template-wrap")) {
+        this.onTemplateMenuKeydown(e);
+      }
+      return;
+    }
     if (e.target.classList && e.target.classList.contains("tsn-cell-input")) {
       this.onEditKeydown(e);
       return;
@@ -1726,7 +1765,6 @@
       this.onTemplateMenuKeydown(e);
       return;
     }
-    if (isNarrow()) return;
     if (e.target.closest && e.target.closest(".tsn-flag-card")) {
       this.onFlagKeydown(e);
       return;
@@ -1788,8 +1826,26 @@
     if (!restore || !this.root) return;
     var el = null;
     if (restore.action) el = this.root.querySelector('[data-action="' + restore.action + '"]');
-    else if (restore.className) el = this.root.querySelector("." + restore.className);
-    if (el && el.focus) el.focus();
+    else if (restore.className === "tsn-facet-name" && restore.lensId) {
+      el = this.root.querySelector('.tsn-facet-name[data-lens="' + restore.lensId + '"][data-facet="' + restore.facetId + '"]');
+    } else if (restore.className) el = this.root.querySelector("." + restore.className);
+    if (!el) return;
+    if (el.focus) el.focus();
+    if (restore.x == null || restore.y == null || typeof document === "undefined") return;
+    var range = null;
+    if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(restore.x, restore.y);
+    else if (document.caretPositionFromPoint) {
+      var pos = document.caretPositionFromPoint(restore.x, restore.y);
+      if (pos && document.createRange) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+    }
+    if (!range || !el.contains(range.startContainer) || !window.getSelection) return;
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 
   ThirtySixtyNinetyEditor.prototype.onPaste = function (e) {
@@ -2284,15 +2340,38 @@
     this.sel = coords[0];
   };
 
-  ThirtySixtyNinetyEditor.prototype.copySelected = function () {
+  function copyViaExec(text) {
+    if (typeof document === "undefined" || !document.createElement) return false;
+    var ta = document.createElement("textarea");
+    ta.value = text == null ? "" : String(text);
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    if (document.body && document.body.appendChild) document.body.appendChild(ta);
+    if (ta.select) ta.select();
+    var ok = false;
+    try { ok = !!(document.execCommand && document.execCommand("copy")); } catch (err) {}
+    if (document.body && document.body.removeChild) document.body.removeChild(ta);
+    return ok;
+  }
+
+  ThirtySixtyNinetyEditor.prototype.copySelected = function (e) {
     var sel = this.sel;
-    if (!sel) return;
+    if (!sel) return false;
     var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
     var text = cellItemText(cell, sel.field, sel.index);
-    this._clip = text;
-    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(function () {});
+    if (e && e.clipboardData && e.clipboardData.setData) {
+      e.clipboardData.setData("text/plain", text);
+      if (e.preventDefault) e.preventDefault();
+      return true;
     }
+    var clip = typeof navigator !== "undefined" && navigator.clipboard;
+    if (clip && clip.writeText) {
+      var p = clip.writeText(text);
+      if (p && p.catch) p.catch(function () { copyViaExec(text); });
+      return p;
+    }
+    return copyViaExec(text);
   };
 
   ThirtySixtyNinetyEditor.prototype.pasteIntoSel = function (text) {
@@ -2766,6 +2845,15 @@
     this.render({ keepFocus: true });
   };
 
+  ThirtySixtyNinetyEditor.prototype.adoptPlan = function (plan) {
+    this.plan = hydratePlan(plan);
+    var stamped = this.plan && this.plan.template && this.plan.template.id;
+    this.template = getTemplateById(this.bundle, stamped) || getDefaultTemplate(this.bundle) || null;
+    this.templateOffer = !!(this.template && shouldOfferTemplateUpdate(this.plan, this.template));
+    if (!planHasCellContent(this.plan)) this.plan.startedBlank = true;
+    this.fresh = false;
+  };
+
   ThirtySixtyNinetyEditor.prototype.openJsonFile = function (input) {
     var self = this;
     var file = input.files[0];
@@ -2780,9 +2868,7 @@
           alert("Invalid file: " + result.error);
           return;
         }
-        self.plan = hydratePlan(plan);
-        if (!planHasCellContent(self.plan)) self.plan.startedBlank = true;
-        self.fresh = false;
+        self.adoptPlan(plan);
         self.setDirty(false);
         self.saveDraft();
         self.render();

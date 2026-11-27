@@ -130,6 +130,12 @@ assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return
 assert(src.indexOf("opts.keepFocus && this.sel") >= 0, "render focuses the grid only when keepFocus is set");
 assert(src.indexOf("first.tabIndex = 0") >= 0, "an unselected grid still has a tab stop");
 assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on the clicked control");
+assert(src.indexOf('className: "tsn-seat-title"') >= 0, "blur restore covers the seat title");
+assert(src.indexOf('className: "tsn-facet-name"') >= 0, "blur restore covers a facet name");
+assert(src.indexOf("if (isNarrow()) {") >= 0 && src.indexOf("e.key !== \"Tab\"") >= 0, "narrow Tab does not run the desktop textarea handler");
+assert(src.indexOf("execCommand(\"copy\")") >= 0, "copy falls back to execCommand");
+assert(src.indexOf("this._clip") < 0, "unread _clip is gone");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.adoptPlan") >= 0, "opening JSON adopts the plan's template");
 assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
 assert(src.indexOf("if (e.target.closest && e.target.closest(\"[data-action]\")) return;") >= 0, "grid shortcuts ignore toolbar buttons");
 assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a keyboard path");
@@ -784,6 +790,24 @@ assert(gappedFacet, "gapped import has the facet");
 assertEqual(JSON.stringify(gappedFacet.cells.d30.criteria), JSON.stringify(["c1", "", "c3"]), "xlsx round-trip keeps a blank criterion slot");
 assertEqual(JSON.stringify(gappedFacet.cells.d30.tactics), JSON.stringify(["t1", "t2", "t3"]), "xlsx round-trip keeps aligned tactics");
 
+console.log("Testing XLSX multiline item round-trip...");
+var multiline = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+multiline.lenses[0].facets[0].cells.d30.criteria = ["a\nb", "c"];
+multiline.lenses[0].facets[0].cells.d30.tactics = ["t1"];
+var multiIn = api.importXlsx(api.exportXlsx(multiline));
+var multiFacet = multiIn.lenses[0].facets.find(function (f) { return f.name === multiline.lenses[0].facets[0].name; });
+assertEqual(JSON.stringify(multiFacet.cells.d30.criteria), JSON.stringify(["a\nb", "c"]), "xlsx round-trip keeps a newline inside one criterion");
+var histJoined = [
+  ["", "", "30 Days", "", "", "60 Days", "", "", "90 Days", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables"],
+  ["Customer", "Users", "Know them", "I can a\nI can b", "Talk to them", "", "", "", "", "", ""]
+];
+var histJoinedWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histJoinedWb, XLSX.utils.aoa_to_sheet(histJoined), "Grid");
+var histJoinedPlan = api.importXlsx(histJoinedWb);
+var histUsers = histJoinedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(JSON.stringify(histUsers.cells.d30.criteria), JSON.stringify(["I can a", "I can b"]), "historical newline-joined criteria still split");
+
 console.log("Testing editor focus, paste, and selection...");
 var editorPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
 function makeEditor(srcPlan) {
@@ -1011,6 +1035,81 @@ restore.focusPointerRestore({ action: "save" });
 assertEqual(restore.focused.join(","), "save", "blur restore focuses the Save control");
 restore.focusPointerRestore({ className: "tsn-person-name" });
 assertEqual(restore.focused.join(","), "save,tsn-person-name", "blur restore focuses the People hire field");
+restore.focusPointerRestore({ className: "tsn-seat-title" });
+assertEqual(restore.focused.join(","), "save,tsn-person-name,tsn-seat-title", "blur restore focuses the seat title");
+restore.focusPointerRestore({ className: "tsn-facet-name", lensId: "customer", facetId: "end-users" });
+assert(restore.focused[restore.focused.length - 1].indexOf("tsn-facet-name") >= 0, "blur restore focuses the clicked facet name");
+
+var origMatchMedia = window.matchMedia;
+window.matchMedia = function () { return { matches: true }; };
+var narrowTab = makeEditor(editorPlan);
+narrowTab.sel = firstCoord(narrowTab.plan, "tactics", 0);
+narrowTab._moved = null;
+narrowTab.finishEditAndMove = function (dir) { narrowTab._moved = dir; };
+narrowTab.onEditKeydown = function () { narrowTab._editKeys = (narrowTab._editKeys || 0) + 1; };
+narrowTab.root.querySelector = function (sel) {
+  if (sel === ".tsn-confirm") return null;
+  return narrowTab.firstCell;
+};
+narrowTab.onKeydown({
+  key: "Tab",
+  shiftKey: false,
+  target: {
+    classList: { contains: function (name) { return name === "tsn-cell-input"; } },
+    closest: function () { return null; }
+  },
+  preventDefault: function () { narrowTab._prevented = true; }
+});
+assert(!narrowTab._moved, "narrow Tab does not select a hidden horizon");
+assert(!narrowTab._editKeys, "narrow Tab skips the desktop textarea handler");
+window.matchMedia = origMatchMedia;
+
+var copyEd = makeEditor(editorPlan);
+copyEd.sel = firstCoord(copyEd.plan, "objective", 0);
+var clipText = "";
+copyEd.copySelected({
+  clipboardData: { setData: function (type, value) { if (type === "text/plain") clipText = value; } },
+  preventDefault: function () { copyEd._copyPrevented = true; }
+});
+assertEqual(clipText, copyEd.plan.lenses[0].facets[0].cells.d30.objective, "copy writes clipboardData");
+assert(copyEd._copyPrevented, "copy with clipboardData prevents the native empty copy");
+var execLog = [];
+var priorDoc = global.document;
+var priorClip = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+Object.defineProperty(navigator, "clipboard", { configurable: true, writable: true, value: undefined });
+global.document = {
+  createElement: function () {
+    return {
+      value: "",
+      style: {},
+      setAttribute: function () {},
+      select: function () { execLog.push("select"); }
+    };
+  },
+  body: {
+    appendChild: function () { execLog.push("append"); },
+    removeChild: function () { execLog.push("remove"); }
+  },
+  execCommand: function (cmd) { execLog.push(cmd); return true; }
+};
+assert(copyEd.copySelected(), "copy without Clipboard API uses the execCommand fallback");
+assert(execLog.indexOf("copy") >= 0, "fallback calls execCommand copy");
+global.document = priorDoc;
+if (priorClip) Object.defineProperty(navigator, "clipboard", priorClip);
+else delete navigator.clipboard;
+
+var jsonEd = makeEditor(editorPlan);
+jsonEd.bundle = extraBundle;
+jsonEd.template = extraBundle.templates.extra;
+var loadedVp = JSON.parse(JSON.stringify(editorPlan));
+loadedVp.template = { id: "product-senior", version: 2 };
+jsonEd.adoptPlan(loadedVp);
+assertEqual(jsonEd.template.id, "product-senior", "opening JSON adopts the plan's template");
+jsonEd.template = extraBundle.templates.extra;
+var unknownPlan = JSON.parse(JSON.stringify(editorPlan));
+unknownPlan.template = { id: "missing-template", version: 1 };
+jsonEd.adoptPlan(unknownPlan);
+assertEqual(jsonEd.template.id, "product-senior", "an unknown template id falls back to the default, not the previous extra");
 
 var pasteEd = makeEditor(editorPlan);
 pasteEd.render = function () {};
