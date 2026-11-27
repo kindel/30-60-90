@@ -103,6 +103,7 @@ body.tsn-page {
   min-width: 10rem;
   z-index: 20;
   overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .tsn-open-menu button {
@@ -117,8 +118,29 @@ body.tsn-page {
   cursor: pointer;
 }
 
-.tsn-open-menu button:hover {
+.tsn-open-menu button:hover,
+.tsn-open-menu button:focus {
   background: var(--kld-wash);
+  outline: none;
+}
+
+.tsn-template-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tsn-template-trigger::after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+}
+
+.tsn-template-wrap {
+  z-index: 21;
 }
 
 .tsn-template-offer {

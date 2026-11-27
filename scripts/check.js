@@ -136,6 +136,9 @@ assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a
 assert(src.indexOf('if (field === "objective" || field === "status") return;') >= 0, "objective and status textarea paste stays native");
 assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "selected objective and status paste keep the full text");
 assertEqual(api.VERSION, 2, "plan schema version is 2");
+assert(src.indexOf('data-action="use-template-menu"') >= 0, "toolbar has a template dropdown");
+assert(src.indexOf('aria-haspopup="menu"') >= 0, "template dropdown is a menu for the keyboard");
+assert(src.indexOf("templateDisplayName") >= 0, "dropdown lists templates by display name");
 assert(src.indexOf('data-action="use-template"') >= 0, "toolbar can apply a template");
 assert(src.indexOf("Replace your plan's writing with the ") >= 0, "apply confirms before replacing writing");
 assert(src.indexOf("shouldAutoApplyTemplate") >= 0, "empty stale drafts auto-load the template");
@@ -285,9 +288,11 @@ console.log("Testing apply template...");
 assertEqual(api.templateApplyConfirmMessage(template),
   "Replace your plan's writing with the " + template.seatTitle + " example?",
   "confirm names the VP of Product example");
-assertEqual(api.listTemplates().length, 1, "one shipped template is a button, not a menu");
+assertEqual(api.listTemplates().length, 1, "one shipped template still lists in the dropdown");
+assertEqual(api.templateDisplayName(bundle, api.listTemplates()[0]), template.seatTitle, "dropdown names the VP of Product template");
 api.setBundle(extraBundle);
 assertEqual(api.listTemplates().length, 2, "a second manifest entry lists both templates");
+assertEqual(api.templateDisplayName(extraBundle, extraBundle.manifest.templates[1]), "Extra", "dropdown falls back to the manifest label");
 api.setBundle(bundle);
 
 var staleEmpty = JSON.parse(JSON.stringify(startedBlank));
@@ -920,17 +925,74 @@ var toolEd = makeEditor(editorPlan);
 toolEd.bundle = bundle;
 toolEd.render();
 assert(toolEd.root.innerHTML.indexOf("Use template") >= 0, "toolbar has Use template");
-assert(toolEd.root.innerHTML.indexOf("use-template-menu") < 0, "one template is a button, not a menu");
+assert(toolEd.root.innerHTML.indexOf("use-template-menu") >= 0, "one template still uses the dropdown");
+assert(toolEd.root.innerHTML.indexOf("VP of Product") >= 0, "dropdown lists the VP of Product name");
+assert(toolEd.root.innerHTML.indexOf('aria-haspopup="menu"') >= 0, "dropdown exposes a menu");
 assert(toolEd.root.innerHTML.indexOf("tsn-template-offer") < 0, "current filled plan has no offer banner");
 
 api.setBundle(extraBundle);
 var menuEd = makeEditor(editorPlan);
 menuEd.bundle = extraBundle;
 menuEd.render();
-assert(menuEd.root.innerHTML.indexOf("use-template-menu") >= 0, "two templates open a menu");
+assert(menuEd.root.innerHTML.indexOf("use-template-menu") >= 0, "two templates stay a dropdown");
 assert(menuEd.root.innerHTML.indexOf('data-template="product-senior"') >= 0, "menu lists product-senior");
+assert(menuEd.root.innerHTML.indexOf("VP of Product") >= 0, "menu names product-senior VP of Product");
 assert(menuEd.root.innerHTML.indexOf('data-template="extra"') >= 0, "menu lists the extra template");
+assert(menuEd.root.innerHTML.indexOf(">Extra</button>") >= 0, "menu names the extra template Extra");
 api.setBundle(bundle);
+
+var dropFocus = [];
+var dropTrigger = {
+  focus: function () { dropFocus.push("trigger"); },
+  setAttribute: function () {}
+};
+var dropItem1 = { focus: function () { dropFocus.push("vp"); } };
+var dropItem2 = { focus: function () { dropFocus.push("extra"); } };
+var dropMenu = {
+  hidden: true,
+  querySelectorAll: function (sel) {
+    return sel.indexOf("menuitem") >= 0 ? [dropItem1, dropItem2] : [];
+  }
+};
+var dropWrap = {
+  querySelector: function (sel) {
+    if (sel.indexOf("use-template-menu") >= 0) return dropTrigger;
+    if (sel.indexOf("tsn-template-menu") >= 0) return dropMenu;
+    return null;
+  }
+};
+[dropTrigger, dropItem1, dropItem2].forEach(function (el) {
+  el.closest = function () { return dropWrap; };
+});
+var dropEd = makeEditor(editorPlan);
+dropEd.templateMenuOpen = false;
+dropEd.root.querySelector = function (sel) {
+  if (sel.indexOf("tsn-template-wrap") >= 0) return dropWrap;
+  if (sel.indexOf("tsn-template-menu") >= 0) return dropMenu;
+  if (sel.indexOf("use-template-menu") >= 0) return dropTrigger;
+  if (sel.indexOf(".tsn-open-menu:not") >= 0) return null;
+  return dropEd.firstCell;
+};
+dropEd.onTemplateMenuKeydown({
+  key: "ArrowDown",
+  target: dropTrigger,
+  preventDefault: function () { dropEd._arrow = true; }
+});
+assert(dropEd.templateMenuOpen, "ArrowDown opens the template dropdown");
+assertEqual(dropFocus.join(","), "vp", "ArrowDown focuses the first template");
+dropEd.onTemplateMenuKeydown({
+  key: "ArrowDown",
+  target: dropItem1,
+  preventDefault: function () {}
+});
+assertEqual(dropFocus.join(","), "vp,extra", "ArrowDown moves to the next template");
+dropEd.onTemplateMenuKeydown({
+  key: "Escape",
+  target: dropItem2,
+  preventDefault: function () { dropEd._esc = true; }
+});
+assert(!dropEd.templateMenuOpen, "Escape closes the template dropdown");
+assertEqual(dropFocus[dropFocus.length - 1], "trigger", "Escape returns to the Use template control");
 
 var offerEd = makeEditor(staleFilled);
 offerEd.templateOffer = true;

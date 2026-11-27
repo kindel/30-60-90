@@ -260,6 +260,14 @@
     return template.seatTitle || template.label || "example";
   }
 
+  function templateDisplayName(bundle, entry) {
+    var id = entry && typeof entry === "object" ? entry.id : entry;
+    var template = getTemplateById(bundle, id);
+    var fromTemplate = template && (template.seatTitle || template.label);
+    if (fromTemplate) return fromTemplate;
+    return (entry && entry.label) || id || "example";
+  }
+
   function templateApplyConfirmMessage(template) {
     return "Replace your plan's writing with the " + templateExampleName(template) + " example?";
   }
@@ -1373,11 +1381,7 @@
       }
     }, true);
     document.addEventListener("click", function (e) {
-      if (!self.root.contains(e.target)) {
-        self.openMenuOpen = false;
-        var menu = self.root.querySelector(".tsn-open-menu");
-        if (menu) menu.hidden = true;
-      }
+      if (!self.root.contains(e.target)) self.closeMenus();
     });
 
     window.addEventListener("beforeunload", function (e) {
@@ -1452,12 +1456,12 @@
     }
     if (action === "use-template-menu") {
       e.stopPropagation();
-      this.templateMenuOpen = !this.templateMenuOpen;
-      this.openMenuOpen = false;
-      var openMenu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
-      if (openMenu) openMenu.hidden = true;
-      var pickMenu = this.root.querySelector(".tsn-template-menu");
-      if (pickMenu) pickMenu.hidden = !this.templateMenuOpen;
+      var next = !this.templateMenuOpen;
+      var parts = this.setTemplateMenuOpen(next);
+      if (next && parts.menu && e.detail === 0) {
+        var first = parts.menu.querySelector("[role=\"menuitem\"]");
+        if (first && first.focus) first.focus();
+      }
       return;
     }
     if (action === "use-template") {
@@ -1716,6 +1720,10 @@
     if (e.target.classList && e.target.classList.contains("tsn-editable") && !e.target.closest(".tsn-cell")) return;
     if (e.target.classList && e.target.classList.contains("tsn-cell-input")) {
       this.onEditKeydown(e);
+      return;
+    }
+    if (e.target.closest && e.target.closest(".tsn-template-wrap")) {
+      this.onTemplateMenuKeydown(e);
       return;
     }
     if (isNarrow()) return;
@@ -2621,10 +2629,78 @@
       this.root.querySelectorAll(".tsn-open-menu").forEach(function (menu) {
         menu.hidden = true;
       });
+    } else {
+      var menu = typeof this.root.querySelector === "function" ? this.root.querySelector(".tsn-open-menu") : null;
+      if (menu) menu.hidden = true;
+    }
+    var trigger = typeof this.root.querySelector === "function"
+      ? this.root.querySelector("[data-action=\"use-template-menu\"]")
+      : null;
+    if (trigger && trigger.setAttribute) trigger.setAttribute("aria-expanded", "false");
+  };
+
+  ThirtySixtyNinetyEditor.prototype.setTemplateMenuOpen = function (open) {
+    this.templateMenuOpen = !!open;
+    if (open) this.openMenuOpen = false;
+    if (!this.root || typeof this.root.querySelector !== "function") {
+      return { wrap: null, menu: null, trigger: null };
+    }
+    var openMenu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
+    if (openMenu) openMenu.hidden = true;
+    var wrap = this.root.querySelector(".tsn-template-wrap");
+    var menu = wrap && wrap.querySelector ? wrap.querySelector(".tsn-template-menu") : this.root.querySelector(".tsn-template-menu");
+    var trigger = wrap && wrap.querySelector
+      ? wrap.querySelector("[data-action=\"use-template-menu\"]")
+      : this.root.querySelector("[data-action=\"use-template-menu\"]");
+    if (menu) menu.hidden = !open;
+    if (trigger && trigger.setAttribute) trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    return { wrap: wrap, menu: menu, trigger: trigger };
+  };
+
+  ThirtySixtyNinetyEditor.prototype.templateMenuItems = function (wrap) {
+    var menu = wrap && wrap.querySelector ? wrap.querySelector(".tsn-template-menu") : null;
+    if (!menu || typeof menu.querySelectorAll !== "function") return [];
+    var nodes = menu.querySelectorAll("[role=\"menuitem\"]");
+    var out = [];
+    var i;
+    for (i = 0; i < nodes.length; i++) out.push(nodes[i]);
+    return out;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onTemplateMenuKeydown = function (e) {
+    var wrap = e.target.closest ? e.target.closest(".tsn-template-wrap") : null;
+    if (!wrap) return;
+    var items = this.templateMenuItems(wrap);
+    var trigger = wrap.querySelector ? wrap.querySelector("[data-action=\"use-template-menu\"]") : null;
+    var idx = -1;
+    var i;
+    for (i = 0; i < items.length; i++) {
+      if (items[i] === e.target) idx = i;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.setTemplateMenuOpen(false);
+      if (trigger && trigger.focus) trigger.focus();
       return;
     }
-    var menu = typeof this.root.querySelector === "function" ? this.root.querySelector(".tsn-open-menu") : null;
-    if (menu) menu.hidden = true;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!this.templateMenuOpen) this.setTemplateMenuOpen(true);
+      items = this.templateMenuItems(wrap);
+      if (!items.length) return;
+      var next;
+      if (idx < 0) next = e.key === "ArrowUp" ? items.length - 1 : 0;
+      else next = e.key === "ArrowDown"
+        ? Math.min(idx + 1, items.length - 1)
+        : Math.max(idx - 1, 0);
+      if (items[next] && items[next].focus) items[next].focus();
+      return;
+    }
+    if ((e.key === "Home" || e.key === "End") && items.length) {
+      e.preventDefault();
+      var jump = e.key === "Home" ? items[0] : items[items.length - 1];
+      if (jump && jump.focus) jump.focus();
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.requestUseTemplate = function (id) {
@@ -2910,19 +2986,19 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.renderTemplateControl = function () {
+    var self = this;
     var entries = listTemplates(this.bundle);
-    if (entries.length > 1) {
-      return '  <div class="tsn-open-wrap">' +
-        '    <button type="button" class="tsn-btn" data-action="use-template-menu">Use template</button>' +
-        '    <div class="tsn-open-menu tsn-template-menu" hidden>' +
-        entries.map(function (item) {
-          return '      <button type="button" data-action="use-template" data-template="' + esc(item.id) + '">' +
-            esc(item.label || item.id) + "</button>";
-        }).join("") +
-        "    </div>" +
-        "  </div>";
-    }
-    return '  <button type="button" class="tsn-btn" data-action="use-template">Use template</button>';
+    var open = !!this.templateMenuOpen;
+    var items = entries.map(function (item) {
+      return '      <button type="button" role="menuitem" data-action="use-template" data-template="' + esc(item.id) + '">' +
+        esc(templateDisplayName(self.bundle, item)) + "</button>";
+    }).join("");
+    return '  <div class="tsn-open-wrap tsn-template-wrap">' +
+      '    <button type="button" class="tsn-btn tsn-template-trigger" data-action="use-template-menu" aria-haspopup="menu" aria-expanded="' + (open ? "true" : "false") + '" aria-controls="tsn-template-menu">Use template</button>' +
+      '    <div class="tsn-open-menu tsn-template-menu" id="tsn-template-menu" role="menu"' + (open ? "" : " hidden") + ">" +
+      items +
+      "    </div>" +
+      "  </div>";
   };
 
   ThirtySixtyNinetyEditor.prototype.render = function (opts) {
@@ -3284,6 +3360,7 @@
     shouldOfferTemplateUpdate: shouldOfferTemplateUpdate,
     templateApplyConfirmMessage: templateApplyConfirmMessage,
     templateExampleName: templateExampleName,
+    templateDisplayName: templateDisplayName,
     loadTemplates: loadTemplates,
     splitLines: splitLines,
     itemList: itemList,
