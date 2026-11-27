@@ -123,6 +123,12 @@ assert(src.indexOf('if (self.root.querySelector(".tsn-confirm")) return;') >= 0,
 assert(src.indexOf("this.commitEdit();\n    var cellEl = el.closest(\".tsn-cell\");") >= 0, "redirect actions commit the active edit first");
 assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
 assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
+assert(src.indexOf("opts.keepFocus && this.sel") >= 0, "render focuses the grid only when keepFocus is set");
+assert(src.indexOf("first.tabIndex = 0") >= 0, "an unselected grid still has a tab stop");
+assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on the clicked control");
+assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
+assert(src.indexOf("if (e.target.closest && (e.target.closest(\"[data-action]\")") >= 0, "grid shortcuts ignore toolbar and flag buttons");
+assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "objective and status paste keep the full text");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
@@ -679,6 +685,154 @@ var gappedFacet = gappedIn.lenses[0].facets.find(function (f) { return f.name ==
 assert(gappedFacet, "gapped import has the facet");
 assertEqual(JSON.stringify(gappedFacet.cells.d30.criteria), JSON.stringify(["c1", "", "c3"]), "xlsx round-trip keeps a blank criterion slot");
 assertEqual(JSON.stringify(gappedFacet.cells.d30.tactics), JSON.stringify(["t1", "t2", "t3"]), "xlsx round-trip keeps aligned tactics");
+
+console.log("Testing editor focus, paste, and selection...");
+var editorPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+function makeEditor(srcPlan) {
+  var focused = [];
+  var firstCell = {
+    tabIndex: -1,
+    focus: function () { focused.push("cell"); }
+  };
+  var nodes = {};
+  function node(name) {
+    if (!nodes[name]) nodes[name] = { focus: function () { focused.push(name); } };
+    return nodes[name];
+  }
+  var editor = Object.create(global.ThirtySixtyNinetyEditor.prototype);
+  editor.focused = focused;
+  editor.firstCell = firstCell;
+  editor.root = {
+    innerHTML: "",
+    setAttribute: function () {},
+    closest: function () { return null; },
+    contains: function () { return true; },
+    querySelector: function (sel) {
+      if (sel === '.tsn-cell[data-field]:not([data-field="pad"])') return firstCell;
+      if (sel.indexOf(".tsn-cell[data-lens=") === 0) return firstCell;
+      var action = sel.match(/^\[data-action="([^"]+)"\]$/);
+      if (action) return node(action[1]);
+      if (sel.charAt(0) === ".") return node(sel.slice(1));
+      return null;
+    },
+    querySelectorAll: function () {
+      return { forEach: function () {} };
+    }
+  };
+  editor.plan = JSON.parse(JSON.stringify(srcPlan));
+  editor.template = template;
+  editor.narrowHorizon = "d30";
+  editor.showStatus = false;
+  editor.peopleOpen = false;
+  editor.panel = null;
+  editor.collapsedLenses = {};
+  editor.sel = null;
+  editor.editing = false;
+  editor.extraFacet = null;
+  editor.suggestFor = null;
+  editor.dirty = false;
+  editor._renderGen = 0;
+  editor.touch = function () { editor.dirty = true; };
+  return editor;
+}
+
+function firstCoord(srcPlan, field, index) {
+  var lens = srcPlan.lenses[0];
+  var facet = lens.facets[0];
+  return { lensId: lens.id, facetId: facet.id, horizonId: "d30", field: field, index: index || 0 };
+}
+
+var loaded = makeEditor(editorPlan);
+loaded.render();
+assertEqual(loaded.focused.join(","), "", "a loaded plan does not steal focus on render");
+assertEqual(loaded.firstCell.tabIndex, 0, "the first cell is a tab stop when nothing is selected");
+assert(loaded.root.innerHTML.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead in the grid");
+
+var blankPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+blankPlan.lenses.forEach(function (lens) {
+  (lens.facets || []).forEach(function (facet) {
+    Object.keys(facet.cells || {}).forEach(function (hid) {
+      facet.cells[hid].objective = "";
+      facet.cells[hid].criteria = [];
+      facet.cells[hid].tactics = [];
+      facet.cells[hid].status = "";
+    });
+  });
+});
+var blankEd = makeEditor(blankPlan);
+blankEd.render();
+assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-crit tsn-cell-lead") >= 0, "empty first criterion keeps the lead class");
+assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-tac tsn-cell-lead") >= 0, "empty first tactic keeps the lead class");
+
+var keep = makeEditor(editorPlan);
+keep.sel = firstCoord(keep.plan, "objective", 0);
+keep.render({ keepFocus: false });
+assertEqual(keep.focused.join(","), "", "keepFocus false does not yank focus back to the grid");
+keep.render({ keepFocus: true });
+assertEqual(keep.focused.join(","), "cell", "keepFocus true restores grid focus");
+
+var restore = makeEditor(editorPlan);
+restore.focusPointerRestore({ action: "save" });
+assertEqual(restore.focused.join(","), "save", "blur restore focuses the Save control");
+restore.focusPointerRestore({ className: "tsn-person-name" });
+assertEqual(restore.focused.join(","), "save,tsn-person-name", "blur restore focuses the People hire field");
+
+var pasteEd = makeEditor(editorPlan);
+pasteEd.render = function () {};
+pasteEd.focusSelected = function () {};
+pasteEd.sel = firstCoord(pasteEd.plan, "objective", 0);
+pasteEd.pasteIntoSel("para one\n\npara two");
+assertEqual(pasteEd.plan.lenses[0].facets[0].cells.d30.objective, "para one\n\npara two", "objective paste keeps both paragraphs");
+pasteEd.sel = firstCoord(pasteEd.plan, "status", 0);
+pasteEd.showStatus = true;
+pasteEd.pasteIntoSel("status a\nstatus b");
+assertEqual(pasteEd.plan.lenses[0].facets[0].cells.d30.status, "status a\nstatus b", "status paste keeps both paragraphs");
+pasteEd.plan.lenses[0].facets[0].cells.d30.criteria = [];
+pasteEd.sel = firstCoord(pasteEd.plan, "criteria", 0);
+pasteEd.pasteIntoSel("c1\nc2");
+assertEqual(JSON.stringify(pasteEd.plan.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["c1", "c2"]), "criteria paste still splits into cells");
+
+var clampEd = makeEditor(editorPlan);
+var clampFacet = clampEd.plan.lenses[0].facets[0];
+Object.keys(clampFacet.cells).forEach(function (hid) {
+  clampFacet.cells[hid].criteria = hid === "d30" ? ["only"] : [];
+  clampFacet.cells[hid].tactics = hid === "d30" ? ["t"] : [];
+});
+clampEd.sel = firstCoord(clampEd.plan, "criteria", 2);
+clampEd.clampSel();
+assertEqual(clampEd.sel.index, 0, "clampSel moves onto a cell that still exists");
+
+var moveEd = makeEditor(editorPlan);
+var movedCell = moveEd.plan.lenses[0].facets[0].cells.d30;
+movedCell.criteria = ["Meet the team"];
+movedCell.tactics = [];
+var renderedMove = false;
+moveEd.render = function () { renderedMove = true; };
+moveEd.focusSelected = function () {};
+var flagCard = { getAttribute: function () { return "0"; } };
+var cellEl = {
+  closest: function (sel) { return sel === ".tsn-cell" ? cellEl : null; },
+  getAttribute: function (name) {
+    var map = {
+      "data-lens": moveEd.plan.lenses[0].id,
+      "data-facet": moveEd.plan.lenses[0].facets[0].id,
+      "data-horizon": "d30",
+      "data-index": "0"
+    };
+    return map[name];
+  }
+};
+var moveBtn = {
+  closest: function (sel) {
+    if (sel === ".tsn-flag-card") return flagCard;
+    if (sel === ".tsn-cell") return cellEl;
+    return null;
+  }
+};
+moveEd.redirectLine(moveBtn, "move");
+assert(renderedMove, "Move to Tactics renders when the cell is not being edited");
+assertEqual(JSON.stringify(movedCell.criteria), JSON.stringify([]), "Move to Tactics clears the criterion");
+assertEqual(JSON.stringify(movedCell.tactics), JSON.stringify(["Meet the team"]), "Move to Tactics appends the tactic");
 
 console.log("Testing computeHorizons...");
 var horizons = api.computeHorizons("2024-03-01", false, template);

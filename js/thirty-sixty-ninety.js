@@ -1223,9 +1223,16 @@
 
     this.root.addEventListener("click", function (e) { self.onClick(e); });
     this.root.addEventListener("mousedown", function (e) {
+      var actionEl = e.target.closest("[data-action]");
       self._pointerOutsideCell = !e.target.closest(".tsn-cell") ||
-        !!e.target.closest("[data-action]") ||
+        !!actionEl ||
         !!e.target.closest(".tsn-flag-card");
+      self._pointerRestore = null;
+      if (!e.target.closest(".tsn-cell")) {
+        if (actionEl) self._pointerRestore = { action: actionEl.getAttribute("data-action") };
+        else if (e.target.classList && e.target.classList.contains("tsn-person-name")) self._pointerRestore = { className: "tsn-person-name" };
+        else if (e.target.classList && e.target.classList.contains("tsn-manager-name")) self._pointerRestore = { className: "tsn-manager-name" };
+      }
     }, true);
     this.root.addEventListener("mousedown", function (e) { self.onCellMouseDown(e); });
     this.root.addEventListener("dblclick", function (e) { self.onCellDblClick(e); });
@@ -1240,7 +1247,10 @@
     this.root.addEventListener("drop", function (e) { self.onDrop(e); });
 
     document.addEventListener("mousedown", function (e) {
-      if (!self.root.contains(e.target)) self._pointerOutsideCell = true;
+      if (!self.root.contains(e.target)) {
+        self._pointerOutsideCell = true;
+        self._pointerRestore = null;
+      }
     }, true);
     document.addEventListener("click", function (e) {
       if (!self.root.contains(e.target)) {
@@ -1604,16 +1614,32 @@
     if (next && cell && cell.contains(next)) return;
     this.commitEdit();
     var leaveGrid = this._pointerOutsideCell || !!(next && this.root.contains(next) && !(cell && cell.contains(next)));
+    var restore = this._pointerRestore;
+    var gen = this._renderGen || 0;
     var self = this;
     setTimeout(function () {
       self._pointerOutsideCell = false;
+      self._pointerRestore = null;
       if (!self.root || self.editing || self._rendering) return;
       if (self.root.querySelector(".tsn-confirm")) return;
       var active = document.activeElement;
       var keepOutside = leaveGrid || (active && self.root.contains(active) && !active.closest(".tsn-cell"));
+      if ((self._renderGen || 0) !== gen) {
+        if (keepOutside) self.focusPointerRestore(restore);
+        return;
+      }
       self.render({ keepFocus: !keepOutside });
       if (!keepOutside) self.focusSelected();
+      else self.focusPointerRestore(restore);
     }, 0);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.focusPointerRestore = function (restore) {
+    if (!restore || !this.root) return;
+    var el = null;
+    if (restore.action) el = this.root.querySelector('[data-action="' + restore.action + '"]');
+    else if (restore.className) el = this.root.querySelector("." + restore.className);
+    if (el && el.focus) el.focus();
   };
 
   ThirtySixtyNinetyEditor.prototype.onPaste = function (e) {
@@ -2609,6 +2635,7 @@
   ThirtySixtyNinetyEditor.prototype.render = function (opts) {
     opts = opts || {};
     this._rendering = true;
+    this._renderGen = (this._renderGen || 0) + 1;
     var focus = opts.keepFocus ? this.savedFocus() : null;
     var plan = this.plan;
     var template = this.template;
@@ -2730,9 +2757,9 @@
     if (host) host.setAttribute("data-narrow-horizon", this.narrowHorizon);
     this._rendering = false;
     if (focus) this.sel = focus;
-    if (this.sel) {
+    if (opts.keepFocus && this.sel) {
       this.focusSelected();
-    } else if (!isNarrow()) {
+    } else if (!this.sel && !isNarrow()) {
       var first = this.root.querySelector('.tsn-cell[data-field]:not([data-field="pad"])');
       if (first) first.tabIndex = 0;
     }
