@@ -60,8 +60,8 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 | `manager` | object | no | The hiring manager. |
 | `startDate` | string | yes | ISO 8601 date (YYYY-MM-DD). The first day of the plan. |
 | `include180` | boolean | no | If true, add a fourth horizon at 180 days. Default false. |
-| `template` | object | no | `{ id, version }` of the template the blank plan started from. New plans record this. v1 files do not have it. |
-| `startedBlank` | boolean | no | True after Start blank. An empty localStorage draft without this flag is ignored so an old empty grid does not hide the filled template. |
+| `template` | object | no | `{ id, version }` of the template last applied. New plans record this. v1 files do not have it. Increment `version` in the template JSON when examples or facets change so an empty or older draft can pick up the new writing. |
+| `startedBlank` | boolean | no | True after Start blank. An empty localStorage draft without this flag is ignored so an old empty grid does not hide the filled template. An empty draft whose template version is older than the file it came from is filled from that template on load. |
 | `horizons` | array | yes | The time horizons (30, 60, 90, optionally 180 days). |
 | `lenses` | array | yes | The four CBTO lenses with their facets. |
 

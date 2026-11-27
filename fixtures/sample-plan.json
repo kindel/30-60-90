@@ -16,7 +16,7 @@
   "include180": false,
   "template": {
     "id": "product-senior",
-    "version": 1
+    "version": 2
   },
   "horizons": [
     {
@@ -118,6 +118,42 @@
               "status": ""
             }
           }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "Learn the signal",
+              "criteria": [
+                "I can name every customer review and owner."
+              ],
+              "tactics": [
+                "Sit in this week's customer-signal review"
+              ],
+              "status": ""
+            },
+            "d60": {
+              "objective": "See what we miss",
+              "criteria": [
+                "I can say which customer pain never reaches the review."
+              ],
+              "tactics": [
+                "Bring tickets to the weekly signal review"
+              ],
+              "status": ""
+            },
+            "d90": {
+              "objective": "Own the cadence",
+              "criteria": [
+                "I have taken ownership of the weekly customer-signal review."
+              ],
+              "tactics": [
+                "Write the signal-review agenda"
+              ],
+              "status": ""
+            }
+          }
         }
       ]
     },
@@ -193,6 +229,42 @@
               ],
               "tactics": [
                 "Write priorities doc"
+              ],
+              "status": ""
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "Learn the MBR",
+              "criteria": [
+                "I can name the monthly business review and who runs it."
+              ],
+              "tactics": [
+                "Sit in this month's MBR with Finance"
+              ],
+              "status": ""
+            },
+            "d60": {
+              "objective": "See the numbers",
+              "criteria": [
+                "I can walk the MBR pack without notes."
+              ],
+              "tactics": [
+                "Prep the product page with FP&A"
+              ],
+              "status": ""
+            },
+            "d90": {
+              "objective": "Own the product page",
+              "criteria": [
+                "Finance has accepted my product page in the MBR."
+              ],
+              "tactics": [
+                "Write the monthly product page"
               ],
               "status": ""
             }
@@ -276,6 +348,42 @@
               "status": ""
             }
           }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "objective": "Learn the cadence",
+              "criteria": [
+                "I can name the product-tech reviews and owners."
+              ],
+              "tactics": [
+                "Sit in this week's architecture review"
+              ],
+              "status": ""
+            },
+            "d60": {
+              "objective": "See the risks",
+              "criteria": [
+                "I can say which tech risks never reach the review."
+              ],
+              "tactics": [
+                "Bring incidents to the product-tech review"
+              ],
+              "status": ""
+            },
+            "d90": {
+              "objective": "Own the review",
+              "criteria": [
+                "I have taken ownership of the product-tech review cadence."
+              ],
+              "tactics": [
+                "Write the architecture-review agenda"
+              ],
+              "status": ""
+            }
+          }
         }
       ]
     },
@@ -325,32 +433,34 @@
           "name": "Mechanisms",
           "cells": {
             "d30": {
-              "objective": "Learn the rhythm",
+              "objective": "Learn how we hire",
               "criteria": [
-                "I know every recurring review and owner."
+                "I can explain the req process, recruiter partner, interview loop, and who approves."
               ],
               "tactics": [
-                "Attend every review"
+                "Walk a req with Talent"
               ],
               "status": ""
             },
             "d60": {
-              "objective": "See how work flows",
+              "objective": "Define the hiring plan",
               "criteria": [
-                "I can say where decisions get made."
+                "I have role definitions written backwards from the plan."
               ],
               "tactics": [
-                "Sit in the weekly ops review"
+                "Write Sr Mgr PM role defs",
+                "Stand up the interview loop"
               ],
               "status": ""
             },
             "d90": {
-              "objective": "Own a mechanism",
+              "objective": "Post the roles",
               "criteria": [
-                "I have taken ownership of one recurring review."
+                "Three Sr. Manager PM roles are posted, each with a written role definition and an interview loop."
               ],
               "tactics": [
-                "Write the operating cadence"
+                "Post Sr Mgr PM roles",
+                "Train the interview loop"
               ],
               "status": ""
             }

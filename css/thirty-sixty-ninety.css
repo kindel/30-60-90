@@ -121,6 +121,12 @@ body.tsn-page {
   background: var(--kld-wash);
 }
 
+.tsn-template-offer {
+  margin: -0.25rem 0 0.85rem;
+  color: var(--kld-muted);
+  font-size: 0.9rem;
+}
+
 .tsn-status-toggle {
   margin-left: auto;
   display: flex;

@@ -228,6 +228,72 @@
     return (bundle.templates && bundle.templates[id]) || null;
   }
 
+  function listTemplates(bundle) {
+    bundle = bundle || getBundle();
+    var list = bundle && bundle.manifest && bundle.manifest.templates;
+    return Array.isArray(list) ? list : [];
+  }
+
+  function getTemplateById(bundle, id) {
+    bundle = bundle || getBundle();
+    if (!id || !bundle || !bundle.templates) return null;
+    return bundle.templates[id] || null;
+  }
+
+  function resolvePlanTemplate(plan, bundle) {
+    var stamped = plan && plan.template && plan.template.id;
+    return getTemplateById(bundle, stamped) || getDefaultTemplate(bundle);
+  }
+
+  function clonePlan(plan) {
+    return JSON.parse(JSON.stringify(plan));
+  }
+
+  function templateExampleName(template) {
+    if (!template) return "example";
+    return template.seatTitle || template.label || "example";
+  }
+
+  function templateApplyConfirmMessage(template) {
+    return "Replace your plan's writing with the " + templateExampleName(template) + " example?";
+  }
+
+  function planTemplateVersion(plan) {
+    if (!plan || !plan.template) return 0;
+    var v = Number(plan.template.version);
+    return isFinite(v) ? v : 0;
+  }
+
+  function shouldAutoApplyTemplate(plan, template) {
+    if (!plan || !template) return false;
+    if (planHasCellContent(plan)) return false;
+    if (!plan.template) return true;
+    if (plan.template.id !== template.id) return true;
+    return planTemplateVersion(plan) < Number(template.version || 0);
+  }
+
+  function shouldOfferTemplateUpdate(plan, template) {
+    if (!plan || !template || !planHasCellContent(plan)) return false;
+    if (!plan.template || plan.template.id !== template.id) return false;
+    return planTemplateVersion(plan) < Number(template.version || 0);
+  }
+
+  function applyTemplateToPlan(plan, template) {
+    if (!plan || !template) return plan;
+    var horizons = plan.horizons && plan.horizons.length
+      ? plan.horizons
+      : computeHorizons(plan.startDate, plan.include180, template);
+    plan.horizons = horizons;
+    plan.lenses = buildLenses(template, horizons, { fillExamples: true });
+    plan.template = { id: template.id, version: template.version };
+    if (!plan.seat) plan.seat = {};
+    plan.seat.title = template.seatTitle || plan.seat.title || "";
+    plan.seat.family = familyFromTemplate(template);
+    delete plan.startedBlank;
+    hydratePlanDismissals(plan);
+    return plan;
+  }
+
   function familyFromTemplate(template) {
     var fn = template && template.function;
     if (fn === "product") return "pm";
@@ -1184,6 +1250,8 @@
     this.fresh = false;
     this.peopleOpen = false;
     this.openMenuOpen = false;
+    this.templateMenuOpen = false;
+    this.templateOffer = false;
     this.panel = null;
     this.undo = null;
     this.suggestFor = null;
@@ -1205,12 +1273,26 @@
       self.template = getDefaultTemplate(bundle);
       if (err || !self.template) return;
       self.loadDraft();
+      var autoApplied = false;
       if (!self.plan) {
         self.plan = createNewPlan({ template: self.template });
         self.fresh = true;
+      } else {
+        self.template = resolvePlanTemplate(self.plan, self.bundle) || self.template;
+        if (shouldAutoApplyTemplate(self.plan, self.template)) {
+          self.undo = { type: "plan", plan: clonePlan(self.plan) };
+          applyTemplateToPlan(self.plan, self.template);
+          autoApplied = true;
+          self.saveDraft();
+        } else if (shouldOfferTemplateUpdate(self.plan, self.template)) {
+          self.templateOffer = true;
+        }
       }
       self.bindRootEvents();
       self.render();
+      if (autoApplied) {
+        self.showUndo("Loaded the " + templateExampleName(self.template) + " example.");
+      }
       if (self.fresh && !isNarrow() && !planHasCellContent(self.plan)) self.focusFirstCell();
     });
   };
@@ -1341,10 +1423,8 @@
       return;
     }
     if (e.target.closest(".tsn-open-menu") || e.target.closest(".tsn-open-wrap")) return;
-    if (this.openMenuOpen) {
-      this.openMenuOpen = false;
-      var menu = this.root.querySelector(".tsn-open-menu");
-      if (menu) menu.hidden = true;
+    if (this.openMenuOpen || this.templateMenuOpen) {
+      this.closeMenus();
     }
   };
 
@@ -1353,8 +1433,25 @@
     if (action === "open-menu") {
       e.stopPropagation();
       this.openMenuOpen = !this.openMenuOpen;
-      var menu = this.root.querySelector(".tsn-open-menu");
+      this.templateMenuOpen = false;
+      var menu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
       if (menu) menu.hidden = !this.openMenuOpen;
+      var templateMenu = this.root.querySelector(".tsn-template-menu");
+      if (templateMenu) templateMenu.hidden = true;
+      return;
+    }
+    if (action === "use-template-menu") {
+      e.stopPropagation();
+      this.templateMenuOpen = !this.templateMenuOpen;
+      this.openMenuOpen = false;
+      var openMenu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
+      if (openMenu) openMenu.hidden = true;
+      var pickMenu = this.root.querySelector(".tsn-template-menu");
+      if (pickMenu) pickMenu.hidden = !this.templateMenuOpen;
+      return;
+    }
+    if (action === "use-template") {
+      this.requestUseTemplate(el && el.getAttribute("data-template"));
       return;
     }
     if (action === "open-json") {
@@ -2297,7 +2394,21 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.applyUndo = function () {
-    if (!this.undo || this.undo.type !== "facet") return;
+    if (!this.undo) return;
+    if (this.undo.type === "plan") {
+      this.plan = this.undo.plan;
+      this.template = resolvePlanTemplate(this.plan, this.bundle) || this.template;
+      if (!planHasCellContent(this.plan) && this.template) {
+        this.plan.template = { id: this.template.id, version: this.template.version };
+        this.plan.startedBlank = true;
+      }
+      this.undo = null;
+      this.templateOffer = shouldOfferTemplateUpdate(this.plan, this.template);
+      this.touch();
+      this.render();
+      return;
+    }
+    if (this.undo.type !== "facet") return;
     var lens = getLens(this.plan, this.undo.lensId);
     if (!lens) return;
     var idx = Math.min(this.undo.index, lens.facets.length);
@@ -2404,6 +2515,9 @@
         ensureMechanismsFacet(lens, self.plan.horizons, self.template, false);
       });
       self.plan.startedBlank = true;
+      if (self.template) {
+        self.plan.template = { id: self.template.id, version: self.template.version };
+      }
       self.fresh = true;
       self.panel = null;
       self.touch();
@@ -2417,11 +2531,49 @@
     this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", go);
   };
 
+  ThirtySixtyNinetyEditor.prototype.closeMenus = function () {
+    this.openMenuOpen = false;
+    this.templateMenuOpen = false;
+    if (!this.root) return;
+    if (typeof this.root.querySelectorAll === "function") {
+      this.root.querySelectorAll(".tsn-open-menu").forEach(function (menu) {
+        menu.hidden = true;
+      });
+      return;
+    }
+    var menu = typeof this.root.querySelector === "function" ? this.root.querySelector(".tsn-open-menu") : null;
+    if (menu) menu.hidden = true;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.requestUseTemplate = function (id) {
+    var self = this;
+    this.closeMenus();
+    if (typeof this.commitAllEdits === "function") this.commitAllEdits();
+    var entries = listTemplates(this.bundle);
+    var chosen = id || (entries[0] && entries[0].id) || "product-senior";
+    var template = getTemplateById(this.bundle, chosen) || this.template;
+    if (!template) return;
+    this.askConfirm(templateApplyConfirmMessage(template), "Use template", function () {
+      self.applyTemplate(template);
+    });
+  };
+
+  ThirtySixtyNinetyEditor.prototype.applyTemplate = function (template) {
+    if (!this.plan || !template) return;
+    if (typeof this.commitAllEdits === "function") this.commitAllEdits();
+    this.undo = { type: "plan", plan: clonePlan(this.plan) };
+    applyTemplateToPlan(this.plan, template);
+    this.template = template;
+    this.templateOffer = false;
+    this.panel = null;
+    this.touch();
+    this.render();
+    this.showUndo("Replaced the plan with the " + templateExampleName(template) + " example.");
+  };
+
   ThirtySixtyNinetyEditor.prototype.requestOpenFile = function (inputId) {
     var self = this;
-    this.openMenuOpen = false;
-    var menu = this.root.querySelector(".tsn-open-menu");
-    if (menu) menu.hidden = true;
+    this.closeMenus();
     var go = function () {
       var input = self.root.querySelector(inputId);
       if (input) input.click();
@@ -2675,6 +2827,22 @@
     return this.sel;
   };
 
+  ThirtySixtyNinetyEditor.prototype.renderTemplateControl = function () {
+    var entries = listTemplates(this.bundle);
+    if (entries.length > 1) {
+      return '  <div class="tsn-open-wrap">' +
+        '    <button type="button" class="tsn-btn" data-action="use-template-menu">Use template</button>' +
+        '    <div class="tsn-open-menu tsn-template-menu" hidden>' +
+        entries.map(function (item) {
+          return '      <button type="button" data-action="use-template" data-template="' + esc(item.id) + '">' +
+            esc(item.label || item.id) + "</button>";
+        }).join("") +
+        "    </div>" +
+        "  </div>";
+    }
+    return '  <button type="button" class="tsn-btn" data-action="use-template">Use template</button>';
+  };
+
   ThirtySixtyNinetyEditor.prototype.render = function (opts) {
     opts = opts || {};
     this._rendering = true;
@@ -2739,6 +2907,7 @@
       "    </div>",
       "  </div>",
       '  <button type="button" class="tsn-btn" data-action="start-blank">Start blank</button>',
+      this.renderTemplateControl(),
       '  <button type="button" class="tsn-btn tsn-btn-save" data-action="save">Save</button>',
       '  <button type="button" class="tsn-btn" data-action="export-xlsx">Export XLSX</button>',
       '  <button type="button" class="tsn-btn" data-action="export-md">Export Markdown</button>',
@@ -2748,6 +2917,9 @@
       '    <button type="button" class="tsn-switch' + (this.showStatus ? " is-on" : "") + '" data-action="toggle-status" role="switch" aria-checked="' + this.showStatus + '" aria-label="Show status"></button>',
       "  </label>",
       "</div>",
+      this.templateOffer
+        ? '<div class="tsn-template-offer" role="status">A newer ' + esc(templateExampleName(this.template)) + " example is available.</div>"
+        : "",
       '<div class="tsn-title-row">',
       '  <h1>30-60-90 <span class="tsn-beta">Beta</span>: <span class="tsn-seat-title tsn-editable' + (seat ? "" : " is-empty") + '" contenteditable="true" data-placeholder="Seat title">' + esc(seat) + "</span>",
       '    <span class="tsn-title-meta"> · starts ',
@@ -3014,6 +3186,14 @@
     getDefaultTemplate: getDefaultTemplate,
     getBundle: getBundle,
     setBundle: setBundle,
+    listTemplates: listTemplates,
+    getTemplateById: getTemplateById,
+    resolvePlanTemplate: resolvePlanTemplate,
+    applyTemplateToPlan: applyTemplateToPlan,
+    shouldAutoApplyTemplate: shouldAutoApplyTemplate,
+    shouldOfferTemplateUpdate: shouldOfferTemplateUpdate,
+    templateApplyConfirmMessage: templateApplyConfirmMessage,
+    templateExampleName: templateExampleName,
     loadTemplates: loadTemplates,
     splitLines: splitLines,
     itemList: itemList,

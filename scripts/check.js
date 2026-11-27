@@ -62,6 +62,7 @@ manifest.templates.forEach(function (entry) {
 });
 assert(template, "default template file loaded");
 assert(template.seatTitle, "default template has a seat title");
+assertEqual(template.version, 2, "product-senior version is 2 so older empty drafts refresh");
 function hasItems(value) {
   if (Array.isArray(value)) return value.some(function (v) { return String(v || "").trim(); });
   return String(value || "").trim().length > 0;
@@ -132,6 +133,9 @@ assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on
 assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
 assert(src.indexOf("if (e.target.closest && (e.target.closest(\"[data-action]\")") >= 0, "grid shortcuts ignore toolbar and flag buttons");
 assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "objective and status paste keep the full text");
+assert(src.indexOf('data-action="use-template"') >= 0, "toolbar can apply a template");
+assert(src.indexOf("Replace your plan's writing with the ") >= 0, "apply confirms before replacing writing");
+assert(src.indexOf("shouldAutoApplyTemplate") >= 0, "empty stale drafts auto-load the template");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
@@ -160,6 +164,7 @@ assertEqual(plan.include180, false, "include180");
 assertEqual(plan.horizons.length, 3, "should have 3 horizons");
 assertEqual(plan.lenses.length, 4, "should have 4 lenses");
 assert(plan.template && plan.template.id === "product-senior", "plan records template id");
+assertEqual(plan.template.version, template.version, "plan records template version");
 
 assertEqual(plan.horizons[0].id, "d30", "first horizon id");
 assertEqual(plan.horizons[0].offsetDays, 30, "first horizon offset");
@@ -272,6 +277,52 @@ v2Filled[api.STORE_KEYS[0]] = JSON.stringify(defaulted);
 var keptFilled = api.readStoredDraft(memoryStore(v2Filled));
 assert(keptFilled && api.planHasCellContent(keptFilled), "filled draft is kept");
 assertEqual(keptFilled.seat.title, template.seatTitle, "filled draft keeps the template seat title");
+
+console.log("Testing apply template...");
+assertEqual(api.templateApplyConfirmMessage(template),
+  "Replace your plan's writing with the " + template.seatTitle + " example?",
+  "confirm names the VP of Product example");
+assertEqual(api.listTemplates().length, 1, "one shipped template is a button, not a menu");
+api.setBundle(extraBundle);
+assertEqual(api.listTemplates().length, 2, "a second manifest entry lists both templates");
+api.setBundle(bundle);
+
+var staleEmpty = JSON.parse(JSON.stringify(startedBlank));
+staleEmpty.template = { id: "product-senior", version: 1 };
+staleEmpty.person = { name: "Ada", role: "hire" };
+staleEmpty.manager = { name: "Grace" };
+staleEmpty.horizons[0].name = "Keep this name";
+staleEmpty.horizons[0].dateManual = true;
+assert(api.shouldAutoApplyTemplate(staleEmpty, template), "empty older draft auto-applies");
+assert(!api.shouldOfferTemplateUpdate(staleEmpty, template), "empty older draft does not only offer");
+
+var currentEmpty = JSON.parse(JSON.stringify(staleEmpty));
+currentEmpty.template = { id: "product-senior", version: template.version };
+assert(!api.shouldAutoApplyTemplate(currentEmpty, template), "empty current-version Start blank stays blank");
+assert(!api.shouldOfferTemplateUpdate(currentEmpty, template), "empty current-version draft is not offered");
+
+var noContentNoStamp = JSON.parse(JSON.stringify(startedBlank));
+delete noContentNoStamp.template;
+assert(api.shouldAutoApplyTemplate(noContentNoStamp, template), "empty draft with no template stamp auto-applies");
+
+var staleFilled = JSON.parse(JSON.stringify(defaulted));
+staleFilled.template = { id: "product-senior", version: 1 };
+staleFilled.person.name = "Ada";
+assert(!api.shouldAutoApplyTemplate(staleFilled, template), "filled older draft is not auto-applied");
+assert(api.shouldOfferTemplateUpdate(staleFilled, template), "filled older draft is offered the newer example");
+
+var applied = api.applyTemplateToPlan(JSON.parse(JSON.stringify(staleEmpty)), template);
+assert(api.planHasCellContent(applied), "apply fills cells from the template");
+assertEqual(applied.person.name, "Ada", "apply keeps the hire name");
+assertEqual(applied.manager.name, "Grace", "apply keeps the manager name");
+assertEqual(applied.startDate, "2024-06-01", "apply keeps the start date");
+assertEqual(applied.horizons[0].date, staleEmpty.horizons[0].date, "apply keeps horizon dates");
+assertEqual(applied.horizons[0].name, "Keep this name", "apply keeps horizon names");
+assertEqual(applied.template.id, "product-senior", "apply records the template id");
+assertEqual(applied.template.version, template.version, "apply records the template version");
+assert(!applied.startedBlank, "apply clears startedBlank");
+assertEqual(applied.seat.title, template.seatTitle, "apply uses the template seat title");
+assertEqual(applied.lenses[0].facets[0].cells.d30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "apply copies example objectives");
 
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({
@@ -490,6 +541,8 @@ var openConfirms = 0;
 var fakeOpen = {
   dirty: true,
   openMenuOpen: true,
+  templateMenuOpen: false,
+  closeMenus: Editor.prototype.closeMenus,
   root: {
     querySelector: function (sel) {
       if (sel === ".tsn-open-menu") return { hidden: false };
@@ -732,6 +785,7 @@ function makeEditor(srcPlan) {
     setAttribute: function () {},
     closest: function () { return null; },
     contains: function () { return true; },
+    insertAdjacentHTML: function (where, html) { editor.root.innerHTML += html; },
     querySelector: function (sel) {
       if (sel === '.tsn-cell[data-field]:not([data-field="pad"])') return firstCell;
       if (sel.indexOf(".tsn-cell[data-lens=") === 0) return firstCell;
@@ -744,6 +798,7 @@ function makeEditor(srcPlan) {
       return { forEach: function () {} };
     }
   };
+  editor.bundle = api.getBundle();
   editor.plan = JSON.parse(JSON.stringify(srcPlan));
   editor.template = template;
   editor.narrowHorizon = "d30";
@@ -820,6 +875,52 @@ startEd.plan.lenses.forEach(function (lens) {
   });
 });
 assert(startEd.plan.lenses[0].facets.some(function (f) { return f.name === "End users"; }), "Start blank keeps End users");
+assertEqual(startEd.plan.template.version, template.version, "Start blank stamps the current template version");
+
+var useEd = makeEditor(JSON.parse(JSON.stringify(emptied)));
+useEd.plan.startedBlank = true;
+useEd.plan.person.name = "Ada";
+useEd.commitAllEdits = function () {};
+useEd.showUndo = function (msg) { useEd._undoMsg = msg; };
+useEd.askConfirm = function (msg, label, fn) {
+  useEd._confirmMsg = msg;
+  useEd._confirmLabel = label;
+  useEd._confirmFn = fn;
+};
+useEd.requestUseTemplate();
+assertEqual(useEd._confirmMsg, "Replace your plan's writing with the " + template.seatTitle + " example?", "Use template confirms first");
+assertEqual(useEd._confirmLabel, "Use template", "confirm button is Use template");
+assert(!api.planHasCellContent(useEd.plan), "cancel leaves the plan");
+useEd._confirmFn();
+assert(api.planHasCellContent(useEd.plan), "confirm applies the template");
+assertEqual(useEd.plan.person.name, "Ada", "applied plan keeps the hire");
+assertEqual(useEd.undo.type, "plan", "apply stores a plan undo");
+assert(useEd._undoMsg.indexOf("example") >= 0, "apply shows undo");
+useEd.applyUndo();
+assert(!api.planHasCellContent(useEd.plan), "undo restores the previous writing");
+assertEqual(useEd.plan.template.version, template.version, "undo of an empty plan stamps the current template version");
+assert(useEd.plan.startedBlank, "undo of an empty apply stays a Start blank");
+
+var toolEd = makeEditor(editorPlan);
+toolEd.bundle = bundle;
+toolEd.render();
+assert(toolEd.root.innerHTML.indexOf("Use template") >= 0, "toolbar has Use template");
+assert(toolEd.root.innerHTML.indexOf("use-template-menu") < 0, "one template is a button, not a menu");
+assert(toolEd.root.innerHTML.indexOf("tsn-template-offer") < 0, "current filled plan has no offer banner");
+
+api.setBundle(extraBundle);
+var menuEd = makeEditor(editorPlan);
+menuEd.bundle = extraBundle;
+menuEd.render();
+assert(menuEd.root.innerHTML.indexOf("use-template-menu") >= 0, "two templates open a menu");
+assert(menuEd.root.innerHTML.indexOf('data-template="product-senior"') >= 0, "menu lists product-senior");
+assert(menuEd.root.innerHTML.indexOf('data-template="extra"') >= 0, "menu lists the extra template");
+api.setBundle(bundle);
+
+var offerEd = makeEditor(staleFilled);
+offerEd.templateOffer = true;
+offerEd.render();
+assert(offerEd.root.innerHTML.indexOf("tsn-template-offer") >= 0, "older filled draft shows an offer");
 
 var keep = makeEditor(editorPlan);
 keep.sel = firstCoord(keep.plan, "objective", 0);

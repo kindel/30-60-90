@@ -19,7 +19,7 @@ var KINDEL_TEMPLATES = {
   "templates": {
     "product-senior": {
       "kind": "kindel.30-60-90.template",
-      "version": 1,
+      "version": 2,
       "id": "product-senior",
       "label": "Senior product leader",
       "seatTitle": "VP of Product",
