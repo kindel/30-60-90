@@ -893,7 +893,7 @@
     var wb = XLSX.utils.book_new();
     var rows = [];
 
-    var header1 = ["", ""];
+    var header1 = [KIND, ""];
     var header2 = ["", ""];
     horizons.forEach(function (h) {
       var title = h.offsetDays + " Days - " + formatDate(fromIso(h.date)) + " - " + h.name;
@@ -1047,22 +1047,19 @@
       "organization": "organization", "organization/people": "organization"
     };
 
-    var oneItemPerCell = false;
-    var di;
-    for (di = 2; di < data.length; di++) {
-      var slotRow = data[di] || [];
-      if (String(slotRow[1] || "").trim()) continue;
-      var slotHasBody = false;
-      var si;
-      for (si = 2; si < slotRow.length; si++) {
-        if (String(slotRow[si] || "").trim()) { slotHasBody = true; break; }
-      }
-      if (slotHasBody) { oneItemPerCell = true; break; }
-    }
+    var oneItemPerCell = String(row1[0] || "").indexOf(KIND) === 0;
     if (!oneItemPerCell) {
-      oneItemPerCell = row1.some(function (c) {
-        return /\d+\s*days\s+-\s+[a-z]{3,}\s+\d{1,2},\s+\d{4}\s+-/i.test(String(c || ""));
-      });
+      var di;
+      for (di = 2; di < data.length; di++) {
+        var slotRow = data[di] || [];
+        if (String(slotRow[1] || "").trim()) continue;
+        var slotHasBody = false;
+        var si;
+        for (si = 2; si < slotRow.length; si++) {
+          if (String(slotRow[si] || "").trim()) { slotHasBody = true; break; }
+        }
+        if (slotHasBody) { oneItemPerCell = true; break; }
+      }
     }
 
     function xlsxCellItems(value) {

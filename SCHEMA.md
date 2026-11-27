@@ -174,7 +174,7 @@ Keep dismisses the flag for that line. It stores the line index on `cell.dismiss
 
 One sheet named "30-60-90" with:
 
-- Header row: blank | blank | then for each horizon: "{offset} Days - {date} - {name}" spanning 4 columns
+- Header row: `kindel.30-60-90` in A1, then blank, then for each horizon: "{offset} Days - {date} - {name}" spanning 4 columns. A1 is the one-item-per-cell marker. Historical files leave A1 blank and still split newline-joined criteria and tactics.
 - Subheader row: blank | blank | then for each horizon: Key Objectives | Evaluation Criteria | Tactics/Deliverables | Status
 - Body rows: lens name in col A (on the first facet row of a lens), facet name in col B on the first slot row of that facet. Extra slot rows leave A and B blank. Each criterion and each tactic is its own spreadsheet cell. A facet with two tactics writes two body rows.
 

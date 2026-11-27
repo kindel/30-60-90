@@ -136,6 +136,9 @@ assert(src.indexOf("if (isNarrow()) {") >= 0 && src.indexOf("e.key !== \"Tab\"")
 assert(src.indexOf("execCommand(\"copy\")") >= 0, "copy falls back to execCommand");
 assert(src.indexOf("this._clip") < 0, "unread _clip is gone");
 assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.adoptPlan") >= 0, "opening JSON adopts the plan's template");
+assert(src.indexOf("header1 = [KIND, \"\"]") >= 0, "new XLSX exports stamp kindel.30-60-90 in A1");
+assert(src.indexOf("String(row1[0] || \"\").indexOf(KIND) === 0") >= 0, "import treats A1 as the one-item-per-cell marker");
+assert(src.indexOf("days\\s+-\\s+[a-z]{3,}") < 0, "dated headers are not the new-format signal");
 assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
 assert(src.indexOf("if (e.target.closest && e.target.closest(\"[data-action]\")) return;") >= 0, "grid shortcuts ignore toolbar buttons");
 assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a keyboard path");
@@ -716,6 +719,7 @@ var ws = wb.Sheets["30-60-90"];
 var data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 assert(data.length > 2, "has header rows and data");
 var header1 = data[0];
+assertEqual(header1[0], "kindel.30-60-90", "new export stamps the kind in A1");
 assert(header1[2].indexOf("30 Days") >= 0, "header has 30 Days");
 
 console.log("Testing XLSX round-trip...");
@@ -797,6 +801,12 @@ multiline.lenses[0].facets[0].cells.d30.tactics = ["t1"];
 var multiIn = api.importXlsx(api.exportXlsx(multiline));
 var multiFacet = multiIn.lenses[0].facets.find(function (f) { return f.name === multiline.lenses[0].facets[0].name; });
 assertEqual(JSON.stringify(multiFacet.cells.d30.criteria), JSON.stringify(["a\nb", "c"]), "xlsx round-trip keeps a newline inside one criterion");
+var singleNl = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+singleNl.lenses[0].facets[0].cells.d30.criteria = ["a\nb"];
+singleNl.lenses[0].facets[0].cells.d30.tactics = ["t1"];
+var singleNlIn = api.importXlsx(api.exportXlsx(singleNl));
+var singleNlFacet = singleNlIn.lenses[0].facets.find(function (f) { return f.name === singleNl.lenses[0].facets[0].name; });
+assertEqual(JSON.stringify(singleNlFacet.cells.d30.criteria), JSON.stringify(["a\nb"]), "xlsx round-trip keeps a lone multiline criterion without extra slot rows");
 var histJoined = [
   ["", "", "30 Days", "", "", "60 Days", "", "", "90 Days", "", ""],
   ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables"],
@@ -807,6 +817,16 @@ XLSX.utils.book_append_sheet(histJoinedWb, XLSX.utils.aoa_to_sheet(histJoined), 
 var histJoinedPlan = api.importXlsx(histJoinedWb);
 var histUsers = histJoinedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
 assertEqual(JSON.stringify(histUsers.cells.d30.criteria), JSON.stringify(["I can a", "I can b"]), "historical newline-joined criteria still split");
+var histDated = [
+  ["", "", "30 Days - Jul 1, 2024 - Land", "", "", "", "60 Days - Jul 31, 2024 - Understand Direction", "", "", "", "90 Days - Aug 30, 2024 - Set Challenge", "", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status"],
+  ["Customer", "Users", "Know them", "I can name users\nI can list segments", "Talk to them", "", "", "", "", "", "", "", "", ""]
+];
+var histDatedWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histDatedWb, XLSX.utils.aoa_to_sheet(histDated), "30-60-90");
+var histDatedPlan = api.importXlsx(histDatedWb);
+var histDatedUsers = histDatedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(JSON.stringify(histDatedUsers.cells.d30.criteria), JSON.stringify(["I can name users", "I can list segments"]), "historical dated headers still split newline-joined criteria");
 
 console.log("Testing editor focus, paste, and selection...");
 var editorPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
