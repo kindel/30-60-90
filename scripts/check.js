@@ -178,6 +178,7 @@ assert(src.indexOf("templateDisplayName") >= 0, "dropdown lists templates by dis
 assert(src.indexOf('data-action="use-template"') >= 0, "toolbar can apply a template");
 assert(src.indexOf("Replace your plan's writing with the ") >= 0, "apply confirms before replacing writing");
 assert(src.indexOf("shouldAutoApplyTemplate") >= 0, "empty stale drafts auto-load the template");
+assert(src.indexOf('if (fn === "engineering") return "engineering"') >= 0, "engineering templates stamp family engineering, not pm");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
@@ -376,6 +377,8 @@ assertEqual(engApplied.seat.title, "Senior Software Engineer", "applying enginee
 assertEqual(engApplied.template.id, "engineer-senior", "applying engineer-senior records the id");
 assertEqual(engApplied.lenses[2].facets[0].id, "codebase", "engineer-senior Technical starts with the codebase");
 assertEqual(engApplied.lenses[2].facets[0].cells.d30.objective, "Ship a first change", "engineer-senior ships a first change by Day 30");
+assertEqual(engApplied.seat.family, "engineering", "applying engineer-senior does not stamp pm");
+assertEqual(api.createNewPlan({ template: engineerTemplate, startDate: "2024-06-01" }).seat.family, "engineering", "a new engineer plan stamps family engineering");
 assertEqual(api.pressureTestPlan(engApplied).length, 0, "engineer-senior examples do not trip Plan check");
 
 console.log("Testing createNewPlan with 180 days...");

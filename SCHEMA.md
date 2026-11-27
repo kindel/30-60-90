@@ -70,7 +70,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `title` | string | no | The job title, e.g. "VP Product". Empty on a fresh blank plan. |
-| `family` | string | no | v1 used `"pm"`, `"hardware"`, or `"general"` to pick default facets. New plans still write a family for compatibility. Facets now come from the template. |
+| `family` | string | no | v1 used `"pm"`, `"hardware"`, or `"general"` to pick default facets. New plans still write a family for compatibility: product maps to `"pm"`, engineering writes `"engineering"`. Facets now come from the template. |
 
 ### person
 
