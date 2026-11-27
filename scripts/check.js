@@ -131,8 +131,11 @@ assert(src.indexOf("opts.keepFocus && this.sel") >= 0, "render focuses the grid 
 assert(src.indexOf("first.tabIndex = 0") >= 0, "an unselected grid still has a tab stop");
 assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on the clicked control");
 assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
-assert(src.indexOf("if (e.target.closest && (e.target.closest(\"[data-action]\")") >= 0, "grid shortcuts ignore toolbar and flag buttons");
-assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "objective and status paste keep the full text");
+assert(src.indexOf("if (e.target.closest && e.target.closest(\"[data-action]\")) return;") >= 0, "grid shortcuts ignore toolbar buttons");
+assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a keyboard path");
+assert(src.indexOf('if (field === "objective" || field === "status") return;') >= 0, "objective and status textarea paste stays native");
+assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "selected objective and status paste keep the full text");
+assertEqual(api.VERSION, 2, "plan schema version is 2");
 assert(src.indexOf('data-action="use-template"') >= 0, "toolbar can apply a template");
 assert(src.indexOf("Replace your plan's writing with the ") >= 0, "apply confirms before replacing writing");
 assert(src.indexOf("shouldAutoApplyTemplate") >= 0, "empty stale drafts auto-load the template");
@@ -153,7 +156,7 @@ var plan = api.createNewPlan({
   include180: false
 });
 
-assert(plan.version === 1, "version should be 1");
+assertEqual(plan.version, 2, "new plans write schema version 2");
 assert(plan.kind === "kindel.30-60-90", "kind should be kindel.30-60-90");
 assertEqual(plan.seat.title, "VP Product", "seat title");
 assertEqual(plan.seat.family, "pm", "seat family");
@@ -352,6 +355,17 @@ assertEqual(v1.version, 1, "v1 version");
 assert(!v1.template, "v1 fixture has no template field");
 var v1Customer = v1.lenses.find(function (l) { return l.id === "customer"; });
 assert(v1Customer.facets.some(function (f) { return f.name === "End-customer"; }), "v1 facets preserved");
+assert(typeof v1.lenses[0].facets[0].cells.d30.criteria === "string", "v1 stores criteria as a string");
+var migrated = api.hydratePlan(JSON.parse(JSON.stringify(v1)));
+assertEqual(migrated.version, 2, "opening a v1 file migrates it to schema 2");
+assert(Array.isArray(migrated.lenses[0].facets[0].cells.d30.criteria), "migrated v1 criteria become an array");
+assert(migrated.lenses[0].facets[0].cells.d30.criteria.length >= 1, "migrated v1 criteria keep their text");
+var tooNew = JSON.parse(JSON.stringify(plan));
+tooNew.version = 99;
+assert(!api.validatePlan(tooNew).valid, "a future schema version is rejected");
+var stamped = JSON.parse(JSON.stringify(v1));
+api.stampPlanVersion(stamped);
+assertEqual(stamped.version, 2, "saves stamp schema version 2");
 
 console.log("Testing pressureTestCell...");
 function flagTypes(flags) {
@@ -625,6 +639,7 @@ oldShape.lenses[0].facets[0].cells.d30 = {
 api.hydratePlan(oldShape);
 assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["I can name them", "I can list segments"]), "hydrate splits string criteria");
 assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.tactics), JSON.stringify(["Ride calls", "Read reviews"]), "hydrate splits string tactics");
+assertEqual(oldShape.version, 2, "hydrating string cells stamps schema version 2");
 
 var oldDraftStore = {};
 var oldDraft = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
@@ -950,6 +965,34 @@ pasteEd.sel = firstCoord(pasteEd.plan, "criteria", 0);
 pasteEd.pasteIntoSel("c1\nc2");
 assertEqual(JSON.stringify(pasteEd.plan.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["c1", "c2"]), "criteria paste still splits into cells");
 
+var pasteCalls = 0;
+var pastePrevented = 0;
+function pasteEvent(field, text) {
+  return {
+    target: {
+      classList: { contains: function (name) { return name === "tsn-cell-input"; } },
+      closest: function () { return { getAttribute: function () { return field; } }; }
+    },
+    clipboardData: { getData: function () { return text; } },
+    preventDefault: function () { pastePrevented += 1; }
+  };
+}
+var pasteHost = {
+  sel: { field: "objective" },
+  commitEdit: function () {},
+  pasteIntoSel: function () { pasteCalls += 1; }
+};
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("objective", "keep\nme"));
+assertEqual(pastePrevented, 0, "objective textarea paste does not preventDefault");
+assertEqual(pasteCalls, 0, "objective textarea paste does not overwrite the cell");
+pasteHost.sel = { field: "status" };
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("status", "a\nb"));
+assertEqual(pastePrevented, 0, "status textarea paste stays native");
+pasteHost.sel = { field: "criteria" };
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("criteria", "c1\nc2"));
+assertEqual(pastePrevented, 1, "criteria multiline paste is intercepted");
+assertEqual(pasteCalls, 1, "criteria multiline paste splits into cells");
+
 var clampEd = makeEditor(editorPlan);
 var clampFacet = clampEd.plan.lenses[0].facets[0];
 Object.keys(clampFacet.cells).forEach(function (hid) {
@@ -959,6 +1002,61 @@ Object.keys(clampFacet.cells).forEach(function (hid) {
 clampEd.sel = firstCoord(clampEd.plan, "criteria", 2);
 clampEd.clampSel();
 assertEqual(clampEd.sel.index, 0, "clampSel moves onto a cell that still exists");
+
+var staleStatus = makeEditor(editorPlan);
+staleStatus.showStatus = false;
+staleStatus.sel = firstCoord(staleStatus.plan, "status", 0);
+staleStatus.render();
+assert(staleStatus.sel && staleStatus.sel.field !== "status", "hiding Status remaps sel off the missing cell");
+assert(staleStatus.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after Status hides");
+
+var staleLens = makeEditor(editorPlan);
+staleLens.collapsedLenses[staleLens.plan.lenses[0].id] = true;
+staleLens.sel = firstCoord(staleLens.plan, "objective", 0);
+staleLens.render();
+assert(staleLens.sel && staleLens.sel.lensId !== staleLens.plan.lenses[0].id, "collapsing a lens remaps sel onto a visible cell");
+assert(staleLens.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after a lens collapses");
+
+var staleFacet = makeEditor(editorPlan);
+staleFacet.sel = { lensId: "customer", facetId: "gone-facet", horizonId: "d30", field: "objective", index: 0 };
+staleFacet.render();
+assert(staleFacet.sel && staleFacet.sel.facetId !== "gone-facet", "a missing facet remaps sel");
+assert(staleFacet.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after the selected facet is gone");
+
+var flagFocus = [];
+var moveFocusBtn = { focus: function () { flagFocus.push("move"); } };
+var rewriteFocusBtn = { focus: function () { flagFocus.push("rewrite"); } };
+var keepFocusBtn = { focus: function () { flagFocus.push("keep"); } };
+var flagButtons = [moveFocusBtn, rewriteFocusBtn, keepFocusBtn];
+var flagCell = {
+  querySelectorAll: function (sel) {
+    return sel.indexOf("tsn-flag-actions") >= 0 ? flagButtons : [];
+  }
+};
+var flagEd = makeEditor(editorPlan);
+flagEd.sel = firstCoord(flagEd.plan, "criteria", 0);
+flagEd.markSelected = function () {};
+flagEd.root.querySelector = function (sel) {
+  if (sel.indexOf("data-field=\"criteria\"") >= 0) return flagCell;
+  if (sel.indexOf(".tsn-cell[data-lens=") === 0) return flagCell;
+  return flagEd.firstCell;
+};
+flagEd.focusSelected = function () { flagFocus.push("cell"); };
+var tabPrevented = 0;
+flagEd.onGridKeydown({ key: "Tab", shiftKey: false, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagFocus.join(","), "move", "Tab from an amber criterion focuses Move to Tactics");
+assertEqual(tabPrevented, 1, "Tab into redirect actions is handled");
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: false, target: moveFocusBtn, preventDefault: function () {} });
+assertEqual(flagFocus.join(","), "move", "Tab inside the card leaves native order until the last button");
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: false, target: keepFocusBtn, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagEd.sel.field, "tactics", "Tab past Keep moves to the next grid cell");
+flagFocus = [];
+flagEd.sel = firstCoord(flagEd.plan, "criteria", 0);
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: true, target: moveFocusBtn, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagFocus.join(","), "cell", "Shift+Tab from Move returns to the criterion");
+flagFocus = [];
+flagEd.onFlagKeydown({ key: "Escape", target: rewriteFocusBtn, preventDefault: function () {} });
+assertEqual(flagFocus.join(","), "cell", "Escape from a redirect action returns to the grid");
 
 var moveEd = makeEditor(editorPlan);
 var movedCell = moveEd.plan.lenses[0].facets[0].cells.d30;

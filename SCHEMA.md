@@ -8,7 +8,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "kind": "kindel.30-60-90",
   "seat": { "title": "VP Product", "family": "pm" },
   "person": { "name": "", "role": "hire" },
@@ -41,7 +41,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 }
 ```
 
-v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load. Older files store `criteria` and `tactics` as newline-joined strings. The editor hydrates those into arrays.
+v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load. Older files store `criteria` and `tactics` as newline-joined strings. The editor hydrates those into arrays and writes schema version 2 on save. v2 is the array-cell format. An older editor that only understands version 1 rejects a v2 file instead of joining the arrays.
 
 ## Provenance
 
@@ -53,7 +53,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `version` | number | yes | Schema version. Currently `1`. |
+| `version` | number | yes | Schema version. Currently `2`. New plans and migrated saves write `2`. Version `1` files still open. |
 | `kind` | string | yes | Always `"kindel.30-60-90"`. Used to identify the file type. |
 | `seat` | object | yes | The role being filled. `title` may be empty on a blank plan. |
 | `person` | object | no | The person filling the seat (hire or existing employee). |

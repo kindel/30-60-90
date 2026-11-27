@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  var VERSION = 1;
+  var VERSION = 2;
   var KIND = "kindel.30-60-90";
   var STORE_KEY = "kindel.30-60-90.draft.v2";
   var STORE_KEYS = ["kindel.30-60-90.draft.v2", "kindel.30-60-90.draft.v1"];
@@ -168,6 +168,11 @@
     return cell;
   }
 
+  function stampPlanVersion(plan) {
+    if (plan) plan.version = VERSION;
+    return plan;
+  }
+
   function hydratePlan(plan) {
     if (!plan || !plan.lenses) return plan;
     plan.lenses.forEach(function (lens) {
@@ -177,6 +182,7 @@
         });
       });
     });
+    stampPlanVersion(plan);
     return plan;
   }
 
@@ -962,6 +968,7 @@
   }
 
   function downloadJson(plan) {
+    stampPlanVersion(plan);
     var json = JSON.stringify(plan, null, 2);
     downloadBlob(generateFilename(plan), "application/json;charset=utf-8", json);
   }
@@ -1305,7 +1312,10 @@
 
   ThirtySixtyNinetyEditor.prototype.saveDraft = function () {
     try {
-      if (this.plan) localStorage.setItem(STORE_KEY, JSON.stringify(this.plan));
+      if (this.plan) {
+        stampPlanVersion(this.plan);
+        localStorage.setItem(STORE_KEY, JSON.stringify(this.plan));
+      }
     } catch (e) {}
   };
 
@@ -1709,7 +1719,11 @@
       return;
     }
     if (isNarrow()) return;
-    if (e.target.closest && (e.target.closest("[data-action]") || e.target.closest(".tsn-flag-card"))) return;
+    if (e.target.closest && e.target.closest(".tsn-flag-card")) {
+      this.onFlagKeydown(e);
+      return;
+    }
+    if (e.target.closest && e.target.closest("[data-action]")) return;
     var gridCell = e.target.closest ? e.target.closest(".tsn-cell") : null;
     if (!gridCell || gridCell.getAttribute("data-field") === "pad") return;
     if (this.sel && !this.editing) this.onGridKeydown(e);
@@ -1774,6 +1788,12 @@
     var text = ((e.clipboardData || window.clipboardData).getData("text/plain") || "").replace(/\r\n/g, "\n");
     if (!text) return;
     if (e.target.classList && e.target.classList.contains("tsn-cell-input")) {
+      var field = this.sel && this.sel.field;
+      if (!field && e.target.closest) {
+        var host = e.target.closest(".tsn-cell");
+        field = host && host.getAttribute("data-field");
+      }
+      if (field === "objective" || field === "status") return;
       if (text.indexOf("\n") < 0) return;
       e.preventDefault();
       this.commitEdit();
@@ -2053,6 +2073,10 @@
     if (e.key === "ArrowDown") { e.preventDefault(); this.moveSel("down"); return; }
     if (e.key === "ArrowUp") { e.preventDefault(); this.moveSel("up"); return; }
     if (e.key === "Tab") {
+      if (!e.shiftKey && this.focusFlagActions()) {
+        e.preventDefault();
+        return;
+      }
       if (!this.moveSel(e.shiftKey ? "left" : "right")) return;
       e.preventDefault();
       return;
@@ -2089,6 +2113,11 @@
     }
     if (e.key === "Tab") {
       e.preventDefault();
+      if (!e.shiftKey && this.sel && this.sel.field === "criteria") {
+        this.commitEdit();
+        this.render({ keepFocus: true });
+        if (this.focusFlagActions()) return;
+      }
       this.finishEditAndMove(e.shiftKey ? "left" : "right");
       return;
     }
@@ -2168,8 +2197,59 @@
     this.focusSelected();
   };
 
+  ThirtySixtyNinetyEditor.prototype.flagActionButtons = function () {
+    if (!this.root || !this.sel || this.sel.field !== "criteria") return [];
+    var el = this.root.querySelector(this.cellSelector(
+      this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index
+    ));
+    if (!el || typeof el.querySelectorAll !== "function") return [];
+    var nodes = el.querySelectorAll(".tsn-flag-actions button");
+    var out = [];
+    var i;
+    for (i = 0; i < nodes.length; i++) out.push(nodes[i]);
+    return out;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.focusFlagActions = function (index) {
+    var buttons = this.flagActionButtons();
+    if (!buttons.length) return false;
+    var i = index == null ? 0 : index;
+    if (i < 0) i = 0;
+    if (i >= buttons.length) i = buttons.length - 1;
+    if (buttons[i] && buttons[i].focus) buttons[i].focus();
+    return true;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onFlagKeydown = function (e) {
+    var buttons = this.flagActionButtons();
+    var idx = -1;
+    var i;
+    for (i = 0; i < buttons.length; i++) {
+      if (buttons[i] === e.target) idx = i;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.focusSelected();
+      return;
+    }
+    if (e.key !== "Tab" || !buttons.length) return;
+    if (e.shiftKey && idx <= 0) {
+      e.preventDefault();
+      this.focusSelected();
+      return;
+    }
+    if (!e.shiftKey && idx >= buttons.length - 1) {
+      e.preventDefault();
+      if (!this.moveSel("right")) this.focusSelected();
+    }
+  };
+
   ThirtySixtyNinetyEditor.prototype.clampSel = function () {
-    if (!this.sel || !this.plan) return;
+    if (!this.plan) {
+      this.sel = null;
+      return;
+    }
+    if (!this.sel) return;
     var coords = this.gridCoords();
     if (!coords.length) {
       this.sel = null;
@@ -2178,20 +2258,22 @@
     var current = this.sel;
     var found = coords.some(function (c) { return sameSel(c, current); });
     if (found) return;
-    var lens = getLens(this.plan, current.lensId);
-    var facet = getFacet(lens, current.facetId);
-    if (!facet) {
-      this.sel = coords[0];
+    var sameHorizon = [];
+    coords.forEach(function (c) {
+      if (c.lensId === current.lensId && c.facetId === current.facetId && c.horizonId === current.horizonId) {
+        sameHorizon.push(c);
+      }
+    });
+    if (sameHorizon.length) {
+      var sameField = sameHorizon.filter(function (c) { return c.field === current.field; });
+      if (sameField.length) {
+        this.sel = sameField[Math.min(current.index || 0, sameField.length - 1)];
+        return;
+      }
+      this.sel = sameHorizon[0];
       return;
     }
-    var last = Math.max(0, this.facetSlotCount(lens, facet) - 1);
-    this.sel = {
-      lensId: current.lensId,
-      facetId: current.facetId,
-      horizonId: current.horizonId,
-      field: current.field,
-      index: Math.min(current.index || 0, last)
-    };
+    this.sel = coords[0];
   };
 
   ThirtySixtyNinetyEditor.prototype.copySelected = function () {
@@ -2847,6 +2929,7 @@
     opts = opts || {};
     this._rendering = true;
     this._renderGen = (this._renderGen || 0) + 1;
+    this.clampSel();
     var focus = opts.keepFocus ? this.savedFocus() : null;
     var plan = this.plan;
     var template = this.template;
@@ -2972,6 +3055,13 @@
     if (host) host.setAttribute("data-narrow-horizon", this.narrowHorizon);
     this._rendering = false;
     if (focus) this.sel = focus;
+    this.clampSel();
+    if (this.sel) {
+      var selEl = this.root.querySelector(this.cellSelector(
+        this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index
+      ));
+      if (!selEl) this.sel = null;
+    }
     if (opts.keepFocus && this.sel) {
       this.focusSelected();
     } else if (!this.sel && !isNarrow()) {
@@ -3206,6 +3296,8 @@
     planHasCellContent: planHasCellContent,
     isUntouchedEmptyDraft: isUntouchedEmptyDraft,
     readStoredDraft: readStoredDraft,
+    stampPlanVersion: stampPlanVersion,
+    VERSION: VERSION,
     STORE_KEYS: STORE_KEYS,
     NARROW_MAX_PX: NARROW_MAX_PX
   };
