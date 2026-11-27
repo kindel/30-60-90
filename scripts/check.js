@@ -119,7 +119,8 @@ assert(css.indexOf(".tsn-cell-tac:not(.tsn-cell-lead)") >= 0, "phone hides extra
 assert(src.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead");
 assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.clampSel") >= 0, "selection clamps after a list shrinks");
 assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.notePendingEdit") >= 0, "pending cell edits persist and warn before unload");
-assert(src.indexOf('if (self.root.querySelector(".tsn-confirm")) return;') >= 0, "blur refresh leaves open dialogs alone");
+assert(src.indexOf("self._blurRefreshWaiting = true") >= 0, "blur refresh waits while a confirm dialog is open");
+assert(src.indexOf("this._blurRefreshWaiting && !opts.keepFocus") >= 0, "closing the dialog runs the postponed blur refresh");
 assert(src.indexOf("this.commitEdit();\n    var cellEl = el.closest(\".tsn-cell\");") >= 0, "redirect actions commit the active edit first");
 assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
 assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
@@ -731,6 +732,9 @@ function makeEditor(srcPlan) {
   editor.extraFacet = null;
   editor.suggestFor = null;
   editor.dirty = false;
+  editor._pendingDirty = false;
+  editor._pendingValue = null;
+  editor._blurRefreshWaiting = false;
   editor._renderGen = 0;
   editor.touch = function () { editor.dirty = true; };
   return editor;
@@ -833,6 +837,106 @@ moveEd.redirectLine(moveBtn, "move");
 assert(renderedMove, "Move to Tactics renders when the cell is not being edited");
 assertEqual(JSON.stringify(movedCell.criteria), JSON.stringify([]), "Move to Tactics clears the criterion");
 assertEqual(JSON.stringify(movedCell.tactics), JSON.stringify(["Meet the team"]), "Move to Tactics appends the tactic");
+
+console.log("Testing pending edits, dialog blur, and redirect commit...");
+var draftStore = {};
+var prevStorage = global.localStorage;
+global.localStorage = {
+  setItem: function (k, v) { draftStore[k] = v; },
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(draftStore, k) ? draftStore[k] : null; },
+  removeItem: function (k) { delete draftStore[k]; }
+};
+var pendingEd = makeEditor(editorPlan);
+var originalObj = pendingEd.plan.lenses[0].facets[0].cells.d30.objective;
+pendingEd.sel = firstCoord(pendingEd.plan, "objective", 0);
+pendingEd.editing = true;
+pendingEd.editOriginal = originalObj;
+pendingEd.render = function () {};
+pendingEd.focusSelected = function () {};
+pendingEd.notePendingEdit("typed but not committed");
+assert(pendingEd._pendingDirty, "typing a cell marks pending dirty for beforeunload");
+assert(draftStore[api.STORE_KEYS[0]], "pending edit writes a draft snapshot");
+var pendingSnap = JSON.parse(draftStore[api.STORE_KEYS[0]]);
+assertEqual(pendingSnap.lenses[0].facets[0].cells.d30.objective, "typed but not committed", "draft snapshot has the typed text");
+assertEqual(pendingEd.plan.lenses[0].facets[0].cells.d30.objective, originalObj, "live plan stays unchanged until commit");
+pendingEd.cancelEdit();
+assertEqual(pendingEd._pendingDirty, false, "Esc clears pending dirty");
+assertEqual(pendingEd.editing, false, "Esc ends the edit");
+assertEqual(pendingEd.plan.lenses[0].facets[0].cells.d30.objective, originalObj, "Esc does not commit typed text");
+global.localStorage = prevStorage;
+
+var queued = [];
+var origTimeout = global.setTimeout;
+global.setTimeout = function (fn) { queued.push(fn); return 0; };
+global.document = global.document || { activeElement: null };
+var dlgEd = makeEditor(editorPlan);
+var confirmOpen = true;
+var origDlgQs = dlgEd.root.querySelector.bind(dlgEd.root);
+dlgEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-confirm") return confirmOpen ? { remove: function () { confirmOpen = false; } } : null;
+  if (sel === ".tsn-cell-input") return { value: "typed in cell" };
+  return origDlgQs(sel);
+};
+var dlgRendered = 0;
+dlgEd.render = function () { dlgRendered += 1; };
+dlgEd.focusSelected = function () {};
+dlgEd.sel = firstCoord(dlgEd.plan, "objective", 0);
+dlgEd.editing = true;
+dlgEd.editOriginal = dlgEd.plan.lenses[0].facets[0].cells.d30.objective;
+dlgEd.onFocusOut({
+  target: {
+    classList: { contains: function (c) { return c === "tsn-cell-input"; } },
+    closest: function () { return { contains: function () { return false; } }; }
+  },
+  relatedTarget: null
+});
+assertEqual(dlgEd.editing, false, "blur commits before the deferred render");
+assertEqual(dlgEd.plan.lenses[0].facets[0].cells.d30.objective, "typed in cell", "blur writes the typed value");
+queued.forEach(function (fn) { fn(); });
+assertEqual(dlgRendered, 0, "blur does not render while a confirm dialog is open");
+assert(dlgEd._blurRefreshWaiting, "refresh waits until the dialog closes");
+dlgEd.closeModal();
+assertEqual(confirmOpen, false, "closeModal removes the dialog");
+assertEqual(dlgRendered, 1, "closing the dialog runs the postponed refresh");
+global.setTimeout = origTimeout;
+
+var editMove = makeEditor(editorPlan);
+var editCell = editMove.plan.lenses[0].facets[0].cells.d30;
+editCell.criteria = ["Meet the team"];
+editCell.tactics = [];
+editMove.sel = firstCoord(editMove.plan, "criteria", 0);
+editMove.editing = true;
+editMove.editOriginal = "Meet the team";
+var origEditQs = editMove.root.querySelector.bind(editMove.root);
+editMove.root.querySelector = function (sel) {
+  if (sel === ".tsn-cell-input") return { value: "Meet the whole team" };
+  return origEditQs(sel);
+};
+editMove.render = function () {};
+editMove.focusSelected = function () {};
+var editCard = { getAttribute: function () { return "0"; } };
+var editCellEl = {
+  closest: function (sel) { return sel === ".tsn-cell" ? editCellEl : null; },
+  getAttribute: function (name) {
+    var map = {
+      "data-lens": editMove.plan.lenses[0].id,
+      "data-facet": editMove.plan.lenses[0].facets[0].id,
+      "data-horizon": "d30",
+      "data-index": "0"
+    };
+    return map[name];
+  }
+};
+var editBtn = {
+  closest: function (sel) {
+    if (sel === ".tsn-flag-card") return editCard;
+    if (sel === ".tsn-cell") return editCellEl;
+    return null;
+  }
+};
+editMove.redirectLine(editBtn, "move");
+assertEqual(JSON.stringify(editCell.criteria), JSON.stringify([]), "editing Move to Tactics commits then clears the criterion");
+assertEqual(JSON.stringify(editCell.tactics), JSON.stringify(["Meet the whole team"]), "Move to Tactics uses the typed criterion, not the stale cell");
 
 console.log("Testing computeHorizons...");
 var horizons = api.computeHorizons("2024-03-01", false, template);

@@ -1621,9 +1621,12 @@
       self._pointerOutsideCell = false;
       self._pointerRestore = null;
       if (!self.root || self.editing || self._rendering) return;
-      if (self.root.querySelector(".tsn-confirm")) return;
       var active = document.activeElement;
       var keepOutside = leaveGrid || (active && self.root.contains(active) && !active.closest(".tsn-cell"));
+      if (self.root.querySelector(".tsn-confirm")) {
+        self._blurRefreshWaiting = true;
+        return;
+      }
       if ((self._renderGen || 0) !== gen) {
         if (keepOutside) self.focusPointerRestore(restore);
         return;
@@ -2570,6 +2573,10 @@
     this.disarmModal();
     var modal = this.root && this.root.querySelector(".tsn-confirm");
     if (modal) modal.remove();
+    if (this._blurRefreshWaiting && !opts.keepFocus) {
+      this._blurRefreshWaiting = false;
+      this.render({ keepFocus: true });
+    }
     if (opts.keepFocus) return;
     var back = this._modalFocus;
     this._modalFocus = null;
