@@ -196,6 +196,15 @@ var businessMech = plan.lenses[1].facets[2].cells.d30;
 assert(businessMech.tactics.some(function (t) { return t.indexOf("MBR") >= 0; }), "business Mechanisms cites the monthly business review");
 var techMech = plan.lenses[2].facets[2].cells.d30;
 assert(techMech.tactics.some(function (t) { return t.indexOf("architecture review") >= 0; }), "technical Mechanisms cites an architecture review");
+var orgMech = plan.lenses[3].facets[1].cells;
+assertEqual(orgMech.d30.objective, "Learn how we hire", "org Mechanisms d30 is hiring");
+assert(orgMech.d30.criteria[0].indexOf("req process") >= 0, "org Mechanisms d30 covers the req process");
+assertEqual(orgMech.d60.objective, "Define the hiring plan", "org Mechanisms d60 is the hiring plan");
+assert(orgMech.d60.criteria[0].indexOf("backwards from the plan") >= 0, "org Mechanisms d60 works backwards from the plan");
+assertEqual(orgMech.d90.objective, "Post the roles", "org Mechanisms d90 is posting roles");
+assert(orgMech.d90.criteria[0].indexOf("Three Sr. Manager PM roles are posted") >= 0, "org Mechanisms d90 posts three Sr Mgr PM roles");
+assert(orgMech.d90.tactics.indexOf("Post Sr Mgr PM roles") >= 0, "org Mechanisms d90 posts the roles");
+assert(orgMech.d90.tactics.indexOf("Train the interview loop") >= 0, "org Mechanisms d90 trains the loop");
 
 var endUsersD30 = plan.lenses[0].facets[0].cells.d30;
 assertEqual(endUsersD30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "new plan copies example objective");

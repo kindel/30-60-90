@@ -520,34 +520,36 @@ var KINDEL_TEMPLATES = {
               "cells": {
                 "d30": {
                   "example": {
-                    "objective": "Learn the rhythm",
+                    "objective": "Learn how we hire",
                     "criteria": [
-                      "I know every recurring review and owner."
+                      "I can explain the req process, recruiter partner, interview loop, and who approves."
                     ],
                     "tactics": [
-                      "Attend every review"
+                      "Walk a req with Talent"
                     ]
                   }
                 },
                 "d60": {
                   "example": {
-                    "objective": "See how work flows",
+                    "objective": "Define the hiring plan",
                     "criteria": [
-                      "I can say where decisions get made."
+                      "I have role definitions written backwards from the plan."
                     ],
                     "tactics": [
-                      "Sit in the weekly ops review"
+                      "Write Sr Mgr PM role defs",
+                      "Stand up the interview loop"
                     ]
                   }
                 },
                 "d90": {
                   "example": {
-                    "objective": "Own a mechanism",
+                    "objective": "Post the roles",
                     "criteria": [
-                      "I have taken ownership of one recurring review."
+                      "Three Sr. Manager PM roles are posted, each with a written role definition and an interview loop."
                     ],
                     "tactics": [
-                      "Write the operating cadence"
+                      "Post Sr Mgr PM roles",
+                      "Train the interview loop"
                     ]
                   }
                 }
