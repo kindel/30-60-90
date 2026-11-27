@@ -1163,6 +1163,8 @@
     this.sel = null;
     this.editing = false;
     this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
     this.extraFacet = null;
     this.init();
   }
@@ -1249,7 +1251,7 @@
     });
 
     window.addEventListener("beforeunload", function (e) {
-      if (self.dirty) {
+      if (self.dirty || self._pendingDirty) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -1479,6 +1481,10 @@
 
   ThirtySixtyNinetyEditor.prototype.onInput = function (e) {
     var t = e.target;
+    if (t.classList.contains("tsn-cell-input")) {
+      this.notePendingEdit(t.value);
+      return;
+    }
     if (t.classList.contains("tsn-seat-title")) {
       this.plan.seat.title = t.textContent.replace(/\u00a0/g, " ").trim();
       this.touch();
@@ -1602,6 +1608,7 @@
     setTimeout(function () {
       self._pointerOutsideCell = false;
       if (!self.root || self.editing || self._rendering) return;
+      if (self.root.querySelector(".tsn-confirm")) return;
       var active = document.activeElement;
       var keepOutside = leaveGrid || (active && self.root.contains(active) && !active.closest(".tsn-cell"));
       self.render({ keepFocus: !keepOutside });
@@ -1703,9 +1710,9 @@
     return coords;
   };
 
-  ThirtySixtyNinetyEditor.prototype.writeSel = function (sel, value) {
+  ThirtySixtyNinetyEditor.prototype.writeSel = function (sel, value, plan) {
     if (!sel) return;
-    var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
+    var cell = getCell(plan || this.plan, sel.lensId, sel.facetId, sel.horizonId);
     if (!cell) return;
     if (sel.field === "objective" || sel.field === "status") {
       cell[sel.field] = String(value == null ? "" : value).replace(/\u00a0/g, " ").trim();
@@ -1722,6 +1729,8 @@
     this.writeSel(this.sel, value);
     this.editing = false;
     this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
     this.extraFacet = null;
     this.touch();
   };
@@ -1734,8 +1743,25 @@
   ThirtySixtyNinetyEditor.prototype.cancelEdit = function () {
     this.editing = false;
     this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
+    this.saveDraft();
     this.render({ keepFocus: true });
     this.focusSelected();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.notePendingEdit = function (value) {
+    this._pendingValue = value;
+    this._pendingDirty = String(value) !== String(this.editOriginal || "");
+    if (!this._pendingDirty || !this.plan || !this.sel) {
+      this.saveDraft();
+      return;
+    }
+    try {
+      var snapshot = JSON.parse(JSON.stringify(this.plan));
+      this.writeSel(this.sel, value, snapshot);
+      localStorage.setItem(STORE_KEY, JSON.stringify(snapshot));
+    } catch (e) {}
   };
 
   ThirtySixtyNinetyEditor.prototype.selectCell = function (sel, opts) {
@@ -2071,6 +2097,7 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.redirectLine = function (el, mode) {
+    this.commitEdit();
     var cellEl = el.closest(".tsn-cell");
     var card = el.closest(".tsn-flag-card");
     if (!card) return;

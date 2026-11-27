@@ -118,6 +118,9 @@ assert(css.indexOf(".tsn-cell-crit:not(.tsn-cell-lead)") >= 0, "phone hides extr
 assert(css.indexOf(".tsn-cell-tac:not(.tsn-cell-lead)") >= 0, "phone hides extra empty tactics only");
 assert(src.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead");
 assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.clampSel") >= 0, "selection clamps after a list shrinks");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.notePendingEdit") >= 0, "pending cell edits persist and warn before unload");
+assert(src.indexOf('if (self.root.querySelector(".tsn-confirm")) return;') >= 0, "blur refresh leaves open dialogs alone");
+assert(src.indexOf("this.commitEdit();\n    var cellEl = el.closest(\".tsn-cell\");") >= 0, "redirect actions commit the active edit first");
 assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
 assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
 
