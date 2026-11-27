@@ -9,6 +9,13 @@
       "label": "Senior product leader",
       "level": "senior",
       "function": "product"
+    },
+    {
+      "id": "engineer-senior",
+      "file": "engineer-senior.json",
+      "label": "Senior software engineer",
+      "level": "senior",
+      "function": "engineering"
     }
   ]
 }

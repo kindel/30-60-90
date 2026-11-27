@@ -124,7 +124,7 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 ## Horizon defaults
 
-Default names, offsets, and the optional 180-day column live in `templates/product-senior.json`. The offsets stay 30 / 60 / 90 / 180. Do not copy the names into app JS.
+Default names, offsets, and the optional 180-day column live in the template files. The offsets stay 30 / 60 / 90 / 180. Do not copy the names into app JS.
 
 ## Templates
 
@@ -132,6 +132,7 @@ Blank-plan content is not part of the plan schema. It lives in:
 
 - `templates/index.json`, tagged by `level` and `function`
 - `templates/product-senior.json` (`kind: "kindel.30-60-90.template"`)
+- `templates/engineer-senior.json` (`kind: "kindel.30-60-90.template"`)
 - `templates/facet-sets.json`, the v1 Hardware and GM/SVP facet lists
 
 A template uses the same grid shape as a plan (`horizons` and `lenses → facets → cells`) but cells hold `hint` and `example` instead of the user's text. Dates are not stored. The app computes them from the start date.

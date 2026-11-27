@@ -6,7 +6,7 @@ The app opens on the plan itself: the default template filled in as editable tex
 
 ## What it does
 
-1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), starter facets including Mechanisms on every lens, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm and keeps a Mechanisms row on every lens. **Use template** is a dropdown of every template in `templates/index.json`, named by seat title (VP of Product for the shipped file). Picking one replaces the current plan's writing after a confirm; names, the start date, and horizon dates stay, and Undo restores the previous writing. Opening a saved JSON file loads that file. An empty saved draft, or one whose template version is older than the file it came from, loads the newer example. A draft with real writing is left alone and offered the newer example instead.
+1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), starter facets including Mechanisms on every lens, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm and keeps a Mechanisms row on every lens. **Use template** is a dropdown of every template in `templates/index.json`, named by seat title (VP of Product and Senior Software Engineer for the shipped files). Picking one replaces the current plan's writing after a confirm; names, the start date, and horizon dates stay, and Undo restores the previous writing. Opening a saved JSON file loads that file. An empty saved draft, or one whose template version is older than the file it came from, loads the newer example. A draft with real writing is left alone and offered the newer example instead.
 2. **Edit in place:** The grid is a spreadsheet. The objective is one cell. Each criterion and each tactic is its own cell. Type to replace. Enter, F2, or double-click to edit. Esc cancels. Arrows move. Tab moves across. Enter on the last criterion or tactic of a facet adds another. Status stays hidden until you toggle it on. On a portrait phone the horizons stay tabbed and you tap a cell to edit it.
 3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Tab from that cell reaches Move to Tactics, Rewrite, and Keep. Escape returns to the cell. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
 4. **Open:** Load an existing `.json` plan file, or import a historical XLSX from under Open. The app rejects files that are not `kindel.30-60-90`. v1 files still open.
@@ -22,7 +22,7 @@ It does not become a weekly status tool. It does not replace Goalie. It does not
 
 The schema is the **30-60-90 grid**: CBTO rows, dated named horizons, inspectable criteria. Locked from three real plans Tig wrote or edited (an SVP rewrite, Avi's hardware plan, and Abhishek's PM plan).
 
-Horizons are dated and named, not generic "30 days." Default names, starter facets, column labels, hints, examples, and help text live in `templates/product-senior.json` (senior product leader). They are not hard-coded in the app. See that file, not this README, for the current wording.
+Horizons are dated and named, not generic "30 days." Default names, starter facets, column labels, hints, examples, and help text live in the template files. They are not hard-coded in the app. See `templates/product-senior.json` and `templates/engineer-senior.json`, not this README, for the current wording.
 
 Rows are CBTO (Customer, Business, Technical, Organization), then a facet of that lens. Each horizon cell has four fields:
 
@@ -39,7 +39,7 @@ Excel is an export format, not a reload format. The XLSX export matches the hist
 
 ## Templates
 
-Starter names, the default seat title, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default. 2.0 ships one file, `templates/product-senior.json`. A new plan copies those examples into the cells. **Use template** is always a dropdown of those files, even when there is only one.
+Starter names, the default seat title, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default (`product-senior`). 2.0 ships `templates/product-senior.json` and `templates/engineer-senior.json`. A new plan copies the default example into the cells. **Use template** is always a dropdown of those files.
 
 Over http the app fetches those JSON files. `index.html` still opens from disk: under `file://`, fetch is blocked, so the app falls back to `js/templates.js`, which `scripts/build-templates.js` generates. `scripts/check.js` fails when that bundle is stale.
 

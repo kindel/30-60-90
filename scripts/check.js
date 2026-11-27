@@ -51,6 +51,7 @@ assertEqual(defaultEntry.level, "senior", "default level tag");
 assertEqual(defaultEntry["function"], "product", "default function tag");
 
 var template;
+var engineerTemplate;
 manifest.templates.forEach(function (entry) {
   var t = readJson("templates/" + entry.file);
   var result = api.validateTemplate(t);
@@ -59,25 +60,47 @@ manifest.templates.forEach(function (entry) {
   assertEqual(t.level, entry.level, entry.id + " level matches manifest");
   assertEqual(t["function"], entry["function"], entry.id + " function matches manifest");
   if (entry.id === manifest.default) template = t;
+  if (entry.id === "engineer-senior") engineerTemplate = t;
 });
 assert(template, "default template file loaded");
 assert(template.seatTitle, "default template has a seat title");
 assertEqual(template.version, 2, "product-senior version is 2 so older empty drafts refresh");
+assert(engineerTemplate, "engineer-senior template file loaded");
+assertEqual(engineerTemplate.seatTitle, "Senior Software Engineer", "engineer-senior seat title");
+assertEqual(engineerTemplate.version, 2, "engineer-senior version is 2");
+assertEqual(engineerTemplate["function"], "engineering", "engineer-senior is an IC engineering template");
 function hasItems(value) {
   if (Array.isArray(value)) return value.some(function (v) { return String(v || "").trim(); });
   return String(value || "").trim().length > 0;
 }
 
-["d30", "d60", "d90"].forEach(function (hid) {
-  template.lenses.forEach(function (lens) {
-    (lens.facets || []).forEach(function (facet) {
-      var ex = facet.cells && facet.cells[hid] && facet.cells[hid].example;
-      assert(ex && String(ex.objective || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs an example objective");
-      assert(ex && Array.isArray(ex.criteria) && hasItems(ex.criteria), lens.id + "/" + facet.id + "/" + hid + " needs example criteria as an array");
-      assert(ex && Array.isArray(ex.tactics) && hasItems(ex.tactics), lens.id + "/" + facet.id + "/" + hid + " needs example tactics as an array");
+function assertTemplateExamples(t) {
+  var lensIds = {};
+  t.lenses.forEach(function (lens) {
+    lensIds[lens.id] = true;
+    var hasMechanisms = (lens.facets || []).some(function (facet) {
+      return facet.id === "mechanisms" || String(facet.name || "").toLowerCase() === "mechanisms";
+    });
+    assert(hasMechanisms, t.id + " " + lens.id + " has a Mechanisms facet");
+    ["d30", "d60", "d90"].forEach(function (hid) {
+      (lens.facets || []).forEach(function (facet) {
+        var ex = facet.cells && facet.cells[hid] && facet.cells[hid].example;
+        assert(ex && String(ex.objective || "").trim(), t.id + "/" + lens.id + "/" + facet.id + "/" + hid + " needs an example objective");
+        assert(ex && Array.isArray(ex.criteria) && hasItems(ex.criteria), t.id + "/" + lens.id + "/" + facet.id + "/" + hid + " needs example criteria as an array");
+        assert(ex && Array.isArray(ex.tactics) && hasItems(ex.tactics), t.id + "/" + lens.id + "/" + facet.id + "/" + hid + " needs example tactics as an array");
+        (ex.criteria || []).forEach(function (line) {
+          assert(!api.lineLooksLikeTactic(line), t.id + "/" + lens.id + "/" + facet.id + "/" + hid + " criterion is not a tactic: " + JSON.stringify(line));
+        });
+      });
     });
   });
-});
+  ["customer", "business", "technical", "organization"].forEach(function (id) {
+    assert(lensIds[id], t.id + " has lens " + id);
+  });
+}
+
+assertTemplateExamples(template);
+assertTemplateExamples(engineerTemplate);
 
 var bundle = api.getBundle();
 assert(bundle, "bundle should load");
@@ -301,11 +324,14 @@ console.log("Testing apply template...");
 assertEqual(api.templateApplyConfirmMessage(template),
   "Replace your plan's writing with the " + template.seatTitle + " example?",
   "confirm names the VP of Product example");
-assertEqual(api.listTemplates().length, 1, "one shipped template still lists in the dropdown");
+assertEqual(api.listTemplates().length, 2, "two shipped templates list in the dropdown");
 assertEqual(api.templateDisplayName(bundle, api.listTemplates()[0]), template.seatTitle, "dropdown names the VP of Product template");
+assertEqual(api.templateDisplayName(bundle, api.listTemplates()[1]), engineerTemplate.seatTitle, "dropdown names the Senior Software Engineer template");
 api.setBundle(extraBundle);
-assertEqual(api.listTemplates().length, 2, "a second manifest entry lists both templates");
-assertEqual(api.templateDisplayName(extraBundle, extraBundle.manifest.templates[1]), "Extra", "dropdown falls back to the manifest label");
+assertEqual(api.listTemplates().length, 3, "an extra manifest entry lists all templates");
+var extraEntry = extraBundle.manifest.templates[extraBundle.manifest.templates.length - 1];
+assertEqual(extraEntry.id, "extra", "extra is appended after the shipped templates");
+assertEqual(api.templateDisplayName(extraBundle, extraEntry), "Extra", "dropdown falls back to the manifest label");
 api.setBundle(bundle);
 
 var staleEmpty = JSON.parse(JSON.stringify(startedBlank));
@@ -344,6 +370,13 @@ assertEqual(applied.template.version, template.version, "apply records the templ
 assert(!applied.startedBlank, "apply clears startedBlank");
 assertEqual(applied.seat.title, template.seatTitle, "apply uses the template seat title");
 assertEqual(applied.lenses[0].facets[0].cells.d30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "apply copies example objectives");
+
+var engApplied = api.applyTemplateToPlan(api.createNewPlan({ startDate: "2024-06-01" }), engineerTemplate);
+assertEqual(engApplied.seat.title, "Senior Software Engineer", "applying engineer-senior sets the seat title");
+assertEqual(engApplied.template.id, "engineer-senior", "applying engineer-senior records the id");
+assertEqual(engApplied.lenses[2].facets[0].id, "codebase", "engineer-senior Technical starts with the codebase");
+assertEqual(engApplied.lenses[2].facets[0].cells.d30.objective, "Ship a first change", "engineer-senior ships a first change by Day 30");
+assertEqual(api.pressureTestPlan(engApplied).length, 0, "engineer-senior examples do not trip Plan check");
 
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({
@@ -992,6 +1025,8 @@ toolEd.render();
 assert(toolEd.root.innerHTML.indexOf("Use template") >= 0, "toolbar has Use template");
 assert(toolEd.root.innerHTML.indexOf("use-template-menu") >= 0, "one template still uses the dropdown");
 assert(toolEd.root.innerHTML.indexOf("VP of Product") >= 0, "dropdown lists the VP of Product name");
+assert(toolEd.root.innerHTML.indexOf("Senior Software Engineer") >= 0, "dropdown lists the Senior Software Engineer name");
+assert(toolEd.root.innerHTML.indexOf('data-template="engineer-senior"') >= 0, "dropdown lists engineer-senior");
 assert(toolEd.root.innerHTML.indexOf('aria-haspopup="menu"') >= 0, "dropdown exposes a menu");
 assert(toolEd.root.innerHTML.indexOf("tsn-template-offer") < 0, "current filled plan has no offer banner");
 

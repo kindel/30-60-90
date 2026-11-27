@@ -1,0 +1,627 @@
+{
+  "kind": "kindel.30-60-90.template",
+  "version": 2,
+  "id": "engineer-senior",
+  "label": "Senior software engineer",
+  "seatTitle": "Senior Software Engineer",
+  "level": "senior",
+  "function": "engineering",
+  "include180": false,
+  "columns": {
+    "objective": "Objective",
+    "criteria": "Criteria",
+    "tactics": "Tactics",
+    "status": "Status"
+  },
+  "hints": {
+    "objective": "Objective",
+    "criteria": "I can …",
+    "tactics": "Tactic",
+    "status": "Status"
+  },
+  "horizons": [
+    {
+      "id": "d30",
+      "offsetDays": 30,
+      "name": "Land",
+      "help": "Learn the system. Frequent feedback."
+    },
+    {
+      "id": "d60",
+      "offsetDays": 60,
+      "name": "Understand Direction; Sense Big Problems",
+      "help": "Contribute to real work with guardrails."
+    },
+    {
+      "id": "d90",
+      "offsetDays": 90,
+      "name": "Start Formulating Plan",
+      "help": "Own something real enough to show how you operate."
+    },
+    {
+      "id": "d180",
+      "offsetDays": 180,
+      "name": "Ship has Turned",
+      "optional": true,
+      "help": "You are running the seat. The plan is how you operate, not how you land."
+    }
+  ],
+  "help": {
+    "criteria": "First person, checkable: I can…, I know…, I have…",
+    "tactics": "What you'll do to get there: meetings, reading, deliverables.",
+    "badCriterion": "Meet with the team"
+  },
+  "lenses": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "help": "Who uses what we build, and how pain reaches us.",
+      "suggestedFacets": [
+        "Users",
+        "Support",
+        "Tickets"
+      ],
+      "facets": [
+        {
+          "id": "users",
+          "name": "Users",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Know who uses it",
+                "criteria": [
+                  "I can name the primary users of our service and what they hire it to do."
+                ],
+                "tactics": [
+                  "Read the product brief",
+                  "Watch 3 support tickets end to end"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Hear their pain",
+                "criteria": [
+                  "I can list the top 3 user complaints that hit this team."
+                ],
+                "tactics": [
+                  "Mine last month's tickets",
+                  "Ask support what repeats"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Use that in the work",
+                "criteria": [
+                  "My next design cites a real user complaint."
+                ],
+                "tactics": [
+                  "Write a short user note for the design review"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "support",
+          "name": "Support",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Find the signal",
+                "criteria": [
+                  "I can name where tickets, chats, and pages land, and who reads them."
+                ],
+                "tactics": [
+                  "Sit with support for a shift"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "See the patterns",
+                "criteria": [
+                  "I can name the 3 ticket types our changes still cause."
+                ],
+                "tactics": [
+                  "Chart last quarter's tickets by feature"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Close a loop",
+                "criteria": [
+                  "I have shipped a fix for an issue support still hits."
+                ],
+                "tactics": [
+                  "Pick one repeating ticket and land the change"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the review",
+                "criteria": [
+                  "I can name the customer or support review and who runs it."
+                ],
+                "tactics": [
+                  "Sit in this week's ticket review"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Bring a signal",
+                "criteria": [
+                  "I can say which user pain never reaches planning."
+                ],
+                "tactics": [
+                  "Bring 3 tickets to planning"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Keep it honest",
+                "criteria": [
+                  "I have added one user signal to the team's weekly review."
+                ],
+                "tactics": [
+                  "Put a support item on the standup agenda"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "help": "Why this team's work exists, and the numbers it moves.",
+      "suggestedFacets": [
+        "Impact",
+        "Metrics",
+        "Planning"
+      ],
+      "facets": [
+        {
+          "id": "impact",
+          "name": "Impact",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn why we exist",
+                "criteria": [
+                  "I can say what outcome this team is paid to move."
+                ],
+                "tactics": [
+                  "Read the team charter",
+                  "Ask my manager why this team exists"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "See the bets",
+                "criteria": [
+                  "I can name this quarter's 3 engineering bets."
+                ],
+                "tactics": [
+                  "Read the current roadmap",
+                  "Sit in planning"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Tie my work to it",
+                "criteria": [
+                  "I can point at a metric my work is meant to move."
+                ],
+                "tactics": [
+                  "Write that link in my design doc"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "metrics",
+          "name": "Metrics",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Find the numbers",
+                "criteria": [
+                  "I can name the dashboards this team watches."
+                ],
+                "tactics": [
+                  "Open the team dashboard with a peer"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Read them",
+                "criteria": [
+                  "I can explain this week's movement in our top metric."
+                ],
+                "tactics": [
+                  "Walk the dashboard in standup"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Use them",
+                "criteria": [
+                  "My 90-day work names a metric and a before and after."
+                ],
+                "tactics": [
+                  "Put the metric in the design doc"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn planning",
+                "criteria": [
+                  "I can name standup, sprint or weekly planning, and who runs them."
+                ],
+                "tactics": [
+                  "Sit in this week's planning"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "See the cuts",
+                "criteria": [
+                  "I can say which work got cut last planning and why."
+                ],
+                "tactics": [
+                  "Ask the lead what slipped"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Shape a slice",
+                "criteria": [
+                  "I have proposed one item in planning and seen it scheduled."
+                ],
+                "tactics": [
+                  "Bring a sized change to planning"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "name": "Technical",
+      "help": "The codebase, how it is built and shipped, and how it fails.",
+      "suggestedFacets": [
+        "Codebase",
+        "Architecture",
+        "Delivery",
+        "Operations"
+      ],
+      "facets": [
+        {
+          "id": "codebase",
+          "name": "Codebase",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Ship a first change",
+                "criteria": [
+                  "I have merged a change to the team's service."
+                ],
+                "tactics": [
+                  "Pick a starter bug",
+                  "Get a review from a teammate"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Own a slice",
+                "criteria": [
+                  "I can change a meaningful feature in our service without a map."
+                ],
+                "tactics": [
+                  "Take a real ticket to done"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Raise the floor",
+                "criteria": [
+                  "I have landed a test, lint, or build improvement in that slice."
+                ],
+                "tactics": [
+                  "Add coverage where I shipped"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "architecture",
+          "name": "Architecture",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the system",
+                "criteria": [
+                  "I can whiteboard our service and its dependencies."
+                ],
+                "tactics": [
+                  "Arch walkthrough with a lead",
+                  "Read the README and runbooks"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Find the risks",
+                "criteria": [
+                  "I can name the 3 places this system fails in production."
+                ],
+                "tactics": [
+                  "Read the last 5 incidents"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Lead a design",
+                "criteria": [
+                  "I have a design doc reviewed by the team."
+                ],
+                "tactics": [
+                  "Write the design",
+                  "Run the review"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "delivery",
+          "name": "Delivery",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the path",
+                "criteria": [
+                  "I can build, test, and deploy our service locally and in staging."
+                ],
+                "tactics": [
+                  "Pair on a deploy",
+                  "Read the on-call runbook"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Take a shift",
+                "criteria": [
+                  "I have completed an on-call shift, including a real or shadow page."
+                ],
+                "tactics": [
+                  "Shadow on-call",
+                  "Take a weekday shift"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Leave it better",
+                "criteria": [
+                  "I have added or fixed one runbook step we actually used."
+                ],
+                "tactics": [
+                  "Update the runbook after a page"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn the reviews",
+                "criteria": [
+                  "I can name how code review, design review, and postmortems run here."
+                ],
+                "tactics": [
+                  "Review 3 PRs",
+                  "Sit in a design review"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Use them",
+                "criteria": [
+                  "I can say what a good review on this team looks like."
+                ],
+                "tactics": [
+                  "Give written review on 5 PRs"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Run one",
+                "criteria": [
+                  "I have run a design review or written a postmortem."
+                ],
+                "tactics": [
+                  "Lead the review for my design",
+                  "Write the postmortem if I own an incident"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "name": "Organization",
+      "help": "The team, how they work, and how a senior IC helps the next person.",
+      "suggestedFacets": [
+        "Team",
+        "Mentoring",
+        "Culture"
+      ],
+      "facets": [
+        {
+          "id": "team",
+          "name": "Team",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Meet the team",
+                "criteria": [
+                  "I can name my manager, my peers, and what each person owns."
+                ],
+                "tactics": [
+                  "1:1 with my manager",
+                  "1:1 with each teammate"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Know how we work",
+                "criteria": [
+                  "I can describe how this team decides, reviews, and ships."
+                ],
+                "tactics": [
+                  "Sit in standup all month",
+                  "Ask how a hard call got made"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Be a teammate",
+                "criteria": [
+                  "My manager has seen how I work with this team."
+                ],
+                "tactics": [
+                  "Ask for feedback in a 1:1"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "mentoring",
+          "name": "Mentoring",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Find the bar",
+                "criteria": [
+                  "I can say who mentors whom and where questions go."
+                ],
+                "tactics": [
+                  "Ask my manager who I should learn from"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Know the review bar",
+                "criteria": [
+                  "I can explain this team's code review norms in a sentence."
+                ],
+                "tactics": [
+                  "Write reviews that name the bar, not just nits"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Help someone",
+                "criteria": [
+                  "I have paired or reviewed with a newer engineer on a real change."
+                ],
+                "tactics": [
+                  "Pair on a starter ticket"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "mechanisms",
+          "name": "Mechanisms",
+          "cells": {
+            "d30": {
+              "example": {
+                "objective": "Learn standup",
+                "criteria": [
+                  "I can name standup, the 1:1 cadence, and who runs them."
+                ],
+                "tactics": [
+                  "Go to standup",
+                  "Book a weekly 1:1 with my manager"
+                ]
+              }
+            },
+            "d60": {
+              "example": {
+                "objective": "Use the cadence",
+                "criteria": [
+                  "I can say what standup is for here, and what it is not."
+                ],
+                "tactics": [
+                  "Keep a 1:1 list",
+                  "Raise one block in standup"
+                ]
+              }
+            },
+            "d90": {
+              "example": {
+                "objective": "Cover a day",
+                "criteria": [
+                  "I have run standup or a planning section once."
+                ],
+                "tactics": [
+                  "Cover standup for a day"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
