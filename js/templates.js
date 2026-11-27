@@ -27,7 +27,8 @@ var KINDEL_TEMPLATES = {
       "function": "product",
       "include180": false,
       "columns": {
-        "objective": "Objective & criteria",
+        "objective": "Objective",
+        "criteria": "Criteria",
         "tactics": "Tactics",
         "status": "Status"
       },
@@ -87,22 +88,36 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Know who buys",
-                    "criteria": "I can name our top 10 customers.",
-                    "tactics": "Ride 5 support calls\nRead top reviews"
+                    "criteria": [
+                      "I can name our top 10 customers."
+                    ],
+                    "tactics": [
+                      "Ride 5 support calls",
+                      "Read top reviews"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Find their pain",
-                    "criteria": "I can list their top 3 complaints.",
-                    "tactics": "Visit 3 customers\nMine tickets"
+                    "criteria": [
+                      "I can list their top 3 complaints."
+                    ],
+                    "tactics": [
+                      "Visit 3 customers",
+                      "Mine tickets"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Set direction",
-                    "criteria": "My plan cites customer input.",
-                    "tactics": "Draft customer memo"
+                    "criteria": [
+                      "My plan cites customer input."
+                    ],
+                    "tactics": [
+                      "Draft customer memo"
+                    ]
                   }
                 }
               }
@@ -114,22 +129,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Meet partners",
-                    "criteria": "I can name our top 5 partners.",
-                    "tactics": "Meet top 5 partners"
+                    "criteria": [
+                      "I can name our top 5 partners."
+                    ],
+                    "tactics": [
+                      "Meet top 5 partners"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Hear issues",
-                    "criteria": "I can say why partners leave.",
-                    "tactics": "Join partner QBRs"
+                    "criteria": [
+                      "I can say why partners leave."
+                    ],
+                    "tactics": [
+                      "Join partner QBRs"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Win support",
-                    "criteria": "Top partners have reviewed my plan.",
-                    "tactics": "Preview plan"
+                    "criteria": [
+                      "Top partners have reviewed my plan."
+                    ],
+                    "tactics": [
+                      "Preview plan"
+                    ]
                   }
                 }
               }
@@ -154,22 +181,35 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Know the P&L",
-                    "criteria": "I can explain margin by product line.",
-                    "tactics": "Read 2 board decks\nSit with FP&A"
+                    "criteria": [
+                      "I can explain margin by product line."
+                    ],
+                    "tactics": [
+                      "Read 2 board decks",
+                      "Sit with FP&A"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Spot the drains",
-                    "criteria": "I can name our 3 biggest cost drains.",
-                    "tactics": "Review spend by team"
+                    "criteria": [
+                      "I can name our 3 biggest cost drains."
+                    ],
+                    "tactics": [
+                      "Review spend by team"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Fund the plan",
-                    "criteria": "Finance has accepted my plan's budget.",
-                    "tactics": "Draft budget"
+                    "criteria": [
+                      "Finance has accepted my plan's budget."
+                    ],
+                    "tactics": [
+                      "Draft budget"
+                    ]
                   }
                 }
               }
@@ -181,22 +221,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Learn the goals",
-                    "criteria": "I can state the top 3 company goals.",
-                    "tactics": "Read strategy docs"
+                    "criteria": [
+                      "I can state the top 3 company goals."
+                    ],
+                    "tactics": [
+                      "Read strategy docs"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "See the gaps",
-                    "criteria": "I can name 3 gaps in our strategy.",
-                    "tactics": "Interview exec staff"
+                    "criteria": [
+                      "I can name 3 gaps in our strategy."
+                    ],
+                    "tactics": [
+                      "Interview exec staff"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Set priorities",
-                    "criteria": "The CEO has reviewed my priorities.",
-                    "tactics": "Write priorities doc"
+                    "criteria": [
+                      "The CEO has reviewed my priorities."
+                    ],
+                    "tactics": [
+                      "Write priorities doc"
+                    ]
                   }
                 }
               }
@@ -222,22 +274,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Learn the system",
-                    "criteria": "I can whiteboard the architecture.",
-                    "tactics": "Arch review with leads"
+                    "criteria": [
+                      "I can whiteboard the architecture."
+                    ],
+                    "tactics": [
+                      "Arch review with leads"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Find the risks",
-                    "criteria": "I can name the 3 biggest tech risks.",
-                    "tactics": "Read incident log"
+                    "criteria": [
+                      "I can name the 3 biggest tech risks."
+                    ],
+                    "tactics": [
+                      "Read incident log"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Set direction",
-                    "criteria": "My leads have critiqued my tech direction.",
-                    "tactics": "Draft tech direction"
+                    "criteria": [
+                      "My leads have critiqued my tech direction."
+                    ],
+                    "tactics": [
+                      "Draft tech direction"
+                    ]
                   }
                 }
               }
@@ -249,22 +313,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Know the baseline",
-                    "criteria": "I know our defect and outage trends.",
-                    "tactics": "Pull defect dashboards"
+                    "criteria": [
+                      "I know our defect and outage trends."
+                    ],
+                    "tactics": [
+                      "Pull defect dashboards"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Find root causes",
-                    "criteria": "I can explain our top 3 quality issues.",
-                    "tactics": "Join post-mortems"
+                    "criteria": [
+                      "I can explain our top 3 quality issues."
+                    ],
+                    "tactics": [
+                      "Join post-mortems"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Plan the fixes",
-                    "criteria": "My plan has quality targets and owners.",
-                    "tactics": "Set targets with leads"
+                    "criteria": [
+                      "My plan has quality targets and owners."
+                    ],
+                    "tactics": [
+                      "Set targets with leads"
+                    ]
                   }
                 }
               }
@@ -289,22 +365,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Meet the team",
-                    "criteria": "I know every manager by name and role.",
-                    "tactics": "1:1 with every manager"
+                    "criteria": [
+                      "I know every manager by name and role."
+                    ],
+                    "tactics": [
+                      "1:1 with every manager"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "Assess talent",
-                    "criteria": "I can name the strengths of each skip-level leader.",
-                    "tactics": "Hold skip-levels"
+                    "criteria": [
+                      "I can name the strengths of each skip-level leader."
+                    ],
+                    "tactics": [
+                      "Hold skip-levels"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Shape the org",
-                    "criteria": "My manager has seen my org proposal.",
-                    "tactics": "Draft org proposal"
+                    "criteria": [
+                      "My manager has seen my org proposal."
+                    ],
+                    "tactics": [
+                      "Draft org proposal"
+                    ]
                   }
                 }
               }
@@ -316,22 +404,34 @@ var KINDEL_TEMPLATES = {
                 "d30": {
                   "example": {
                     "objective": "Learn the rhythm",
-                    "criteria": "I know every recurring review and owner.",
-                    "tactics": "Attend every review"
+                    "criteria": [
+                      "I know every recurring review and owner."
+                    ],
+                    "tactics": [
+                      "Attend every review"
+                    ]
                   }
                 },
                 "d60": {
                   "example": {
                     "objective": "See how work flows",
-                    "criteria": "I can say where decisions get made.",
-                    "tactics": "Sit in the weekly ops review"
+                    "criteria": [
+                      "I can say where decisions get made."
+                    ],
+                    "tactics": [
+                      "Sit in the weekly ops review"
+                    ]
                   }
                 },
                 "d90": {
                   "example": {
                     "objective": "Own a mechanism",
-                    "criteria": "I have taken ownership of one recurring review.",
-                    "tactics": "Write the operating cadence"
+                    "criteria": [
+                      "I have taken ownership of one recurring review."
+                    ],
+                    "tactics": [
+                      "Write the operating cadence"
+                    ]
                   }
                 }
               }

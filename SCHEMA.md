@@ -30,9 +30,9 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
           "id": "end-users",
           "name": "End users",
           "cells": {
-            "d30": { "objective": "", "criteria": "", "tactics": "", "status": "" },
-            "d60": { "objective": "", "criteria": "", "tactics": "", "status": "" },
-            "d90": { "objective": "", "criteria": "", "tactics": "", "status": "" }
+            "d30": { "objective": "", "criteria": [], "tactics": [], "status": "" },
+            "d60": { "objective": "", "criteria": [], "tactics": [], "status": "" },
+            "d90": { "objective": "", "criteria": [], "tactics": [], "status": "" }
           }
         }
       ]
@@ -41,7 +41,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 }
 ```
 
-v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load.
+v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load. Older files store `criteria` and `tactics` as newline-joined strings. The editor hydrates those into arrays.
 
 ## Provenance
 
@@ -115,9 +115,9 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `objective` | string | no | Key objective for this facet in this horizon. |
-| `criteria` | string | no | Evaluation criteria. One bullet per line. Should be first-person and inspectable. |
-| `tactics` | string | no | Tactics and deliverables. One bullet per line. |
+| `objective` | string | no | Key objective for this facet in this horizon. One cell. |
+| `criteria` | string[] | no | Evaluation criteria. One string per criterion, each its own cell. Older files may store a newline-joined string. |
+| `tactics` | string[] | no | Tactics and deliverables. One string per tactic, each its own cell. Older files may store a newline-joined string. |
 | `status` | string | no | Status. Empty on a new plan. |
 | `dismissed` | number[] | no | Current indexes of criteria the author kept after the tactic redirect. |
 | `dismissedText` | string[] | no | The kept criterion text. Keep writes both this and `dismissed`. Edits drop a Keep when the text is gone. |
@@ -176,7 +176,7 @@ One sheet named "30-60-90" with:
 
 - Header row: blank | blank | then for each horizon: "{offset} Days - {date} - {name}" spanning 4 columns
 - Subheader row: blank | blank | then for each horizon: Key Objectives | Evaluation Criteria | Tactics/Deliverables | Status
-- Body rows: lens name in col A (repeated or only on first facet of lens), facet name in col B, then the four fields per horizon
+- Body rows: lens name in col A (on the first facet row of a lens), facet name in col B on the first slot row of that facet. Extra slot rows leave A and B blank. Each criterion and each tactic is its own spreadsheet cell. A facet with two tactics writes two body rows.
 
 ### Markdown
 

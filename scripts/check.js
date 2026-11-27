@@ -62,13 +62,18 @@ manifest.templates.forEach(function (entry) {
 });
 assert(template, "default template file loaded");
 assert(template.seatTitle, "default template has a seat title");
+function hasItems(value) {
+  if (Array.isArray(value)) return value.some(function (v) { return String(v || "").trim(); });
+  return String(value || "").trim().length > 0;
+}
+
 ["d30", "d60", "d90"].forEach(function (hid) {
   template.lenses.forEach(function (lens) {
     (lens.facets || []).forEach(function (facet) {
       var ex = facet.cells && facet.cells[hid] && facet.cells[hid].example;
       assert(ex && String(ex.objective || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs an example objective");
-      assert(ex && String(ex.criteria || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example criteria");
-      assert(ex && String(ex.tactics || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example tactics");
+      assert(ex && Array.isArray(ex.criteria) && hasItems(ex.criteria), lens.id + "/" + facet.id + "/" + hid + " needs example criteria as an array");
+      assert(ex && Array.isArray(ex.tactics) && hasItems(ex.tactics), lens.id + "/" + facet.id + "/" + hid + " needs example tactics as an array");
     });
   });
 });
@@ -163,15 +168,18 @@ assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "second organization fa
 
 var endUsersD30 = plan.lenses[0].facets[0].cells.d30;
 assertEqual(endUsersD30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "new plan copies example objective");
-assertEqual(endUsersD30.criteria, template.lenses[0].facets[0].cells.d30.example.criteria, "new plan copies example criteria");
-assertEqual(endUsersD30.tactics, template.lenses[0].facets[0].cells.d30.example.tactics, "new plan copies example tactics");
+assertEqual(JSON.stringify(endUsersD30.criteria), JSON.stringify(template.lenses[0].facets[0].cells.d30.example.criteria), "new plan copies example criteria");
+assertEqual(JSON.stringify(endUsersD30.tactics), JSON.stringify(template.lenses[0].facets[0].cells.d30.example.tactics), "new plan copies example tactics");
+assert(Array.isArray(endUsersD30.criteria), "new plan stores criteria as an array");
+assert(Array.isArray(endUsersD30.tactics), "new plan stores tactics as an array");
+assert(endUsersD30.tactics.length >= 2, "template tactics split into individual items");
 assert(api.planHasCellContent(plan), "filled new plan has cell content");
 
 ["d30", "d60", "d90"].forEach(function (hid) {
   plan.lenses.forEach(function (lens) {
     lens.facets.forEach(function (facet) {
       var cell = facet.cells[hid];
-      assert(cell && cell.objective && cell.criteria && cell.tactics,
+      assert(cell && cell.objective && api.filledItems(cell.criteria).length && api.filledItems(cell.tactics).length,
         lens.id + "/" + facet.id + "/" + hid + " is filled from the template");
     });
   });
@@ -513,11 +521,32 @@ assertEqual(dated.startDate, "2024-07-01", "start date updated");
 assertEqual(dated.horizons[0].date, "2024-12-25", "manual date stays put");
 assertEqual(dated.horizons[1].date, "2024-08-30", "auto date moves");
 
+console.log("Testing hydratePlan of string cells...");
+var oldShape = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+oldShape.lenses[0].facets[0].cells.d30 = {
+  objective: "Know users",
+  criteria: "I can name them\nI can list segments",
+  tactics: "Ride calls\nRead reviews",
+  status: ""
+};
+api.hydratePlan(oldShape);
+assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["I can name them", "I can list segments"]), "hydrate splits string criteria");
+assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.tactics), JSON.stringify(["Ride calls", "Read reviews"]), "hydrate splits string tactics");
+
+var oldDraftStore = {};
+var oldDraft = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+oldDraft.lenses[0].facets[0].cells.d30.criteria = "I can name our top 10 customers.";
+oldDraft.lenses[0].facets[0].cells.d30.tactics = "Ride 5 support calls\nRead top reviews";
+oldDraftStore[api.STORE_KEYS[0]] = JSON.stringify(oldDraft);
+var loadedOld = api.readStoredDraft(memoryStore(oldDraftStore));
+assert(loadedOld && Array.isArray(loadedOld.lenses[0].facets[0].cells.d30.criteria), "localStorage string criteria hydrate to an array");
+assertEqual(loadedOld.lenses[0].facets[0].cells.d30.tactics.length, 2, "localStorage string tactics split");
+
 console.log("Testing exportMarkdown...");
 plan.lenses[0].facets[0].cells.d30 = {
   objective: "Understand the customer",
-  criteria: "I can name the top 5 customer segments",
-  tactics: "Review customer data\nTalk to support team",
+  criteria: ["I can name the top 5 customer segments"],
+  tactics: ["Review customer data", "Talk to support team"],
   status: ""
 };
 
@@ -538,8 +567,8 @@ var statusOnlyPlan = api.createNewPlan({
 });
 statusOnlyPlan.lenses[0].facets[0].cells.d30 = {
   objective: "",
-  criteria: "",
-  tactics: "",
+  criteria: [],
+  tactics: [],
   status: "Completed"
 };
 var statusMd = api.exportMarkdown(statusOnlyPlan);
@@ -581,7 +610,11 @@ var importedLens = imported.lenses.find(function (l) { return l.id === "customer
 var importedFacet = importedLens.facets.find(function (f) { return f.name === origFacet.name; });
 assert(importedFacet, "imported has matching facet");
 assertEqual(importedFacet.cells.d30.objective, origFacet.cells.d30.objective, "objective preserved in round-trip");
-assertEqual(importedFacet.cells.d30.criteria, origFacet.cells.d30.criteria, "criteria preserved in round-trip");
+assertEqual(JSON.stringify(importedFacet.cells.d30.criteria), JSON.stringify(origFacet.cells.d30.criteria), "criteria preserved in round-trip");
+assertEqual(JSON.stringify(importedFacet.cells.d30.tactics), JSON.stringify(origFacet.cells.d30.tactics), "tactics preserved in round-trip");
+assertEqual(data[2][1], origFacet.name, "first slot row names the facet");
+assertEqual(data[3][1], "", "extra tactic rows leave the facet name blank");
+assert(String(data[3][4] || "").length > 0, "second tactic sits in its own spreadsheet cell");
 
 console.log("Testing historical XLSX import...");
 var historicalWb = XLSX.utils.book_new();
@@ -608,7 +641,7 @@ assert(customerLens.facets.length >= 2, "customer lens has facets");
 var endUsersFacet = customerLens.facets.find(function (f) { return f.name === "End users"; });
 assert(endUsersFacet, "has End users facet");
 assertEqual(endUsersFacet.cells.d30.objective, "Know users", "historical objective imported");
-assertEqual(endUsersFacet.cells.d30.criteria, "I can list users", "historical criteria imported");
+assertEqual(JSON.stringify(endUsersFacet.cells.d30.criteria), JSON.stringify(["I can list users"]), "historical criteria imported as an array");
 
 console.log("Testing historical import with 3-column format (no status)...");
 var historical3Col = [

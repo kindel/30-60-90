@@ -30,41 +30,41 @@ var plan = api.createNewPlan({
 
 plan.lenses[0].facets[0].cells.d30 = {
   objective: "Understand who the end-customer is",
-  criteria: "I can name the top 5 customer segments and their needs",
-  tactics: "Review customer research\nTalk to support team\nShadow customer calls",
+  criteria: ["I can name the top 5 customer segments and their needs"],
+  tactics: ["Review customer research", "Talk to support team", "Shadow customer calls"],
   status: ""
 };
 plan.lenses[0].facets[0].cells.d60 = {
   objective: "Know customer pain points",
-  criteria: "I can prioritize the top 3 pain points with data",
-  tactics: "Analyze support tickets\nConduct customer interviews",
+  criteria: ["I can prioritize the top 3 pain points with data"],
+  tactics: ["Analyze support tickets", "Conduct customer interviews"],
   status: ""
 };
 plan.lenses[0].facets[0].cells.d90 = {
   objective: "Have a customer-focused roadmap",
-  criteria: "I have a prioritized list of features mapped to customer needs",
-  tactics: "Create roadmap document\nGet stakeholder buy-in",
+  criteria: ["I have a prioritized list of features mapped to customer needs"],
+  tactics: ["Create roadmap document", "Get stakeholder buy-in"],
   status: ""
 };
 
 plan.lenses[1].facets[0].cells.d30 = {
   objective: "Understand the P&L",
-  criteria: "I can explain the revenue and cost structure",
-  tactics: "Meet with finance team\nReview quarterly reports",
+  criteria: ["I can explain the revenue and cost structure"],
+  tactics: ["Meet with finance team", "Review quarterly reports"],
   status: ""
 };
 
 plan.lenses[2].facets[0].cells.d30 = {
   objective: "Learn the system architecture",
-  criteria: "I can draw the high-level architecture diagram",
-  tactics: "Read architecture docs\nMeet with tech leads",
+  criteria: ["I can draw the high-level architecture diagram"],
+  tactics: ["Read architecture docs", "Meet with tech leads"],
   status: ""
 };
 
 plan.lenses[3].facets[0].cells.d30 = {
   objective: "Meet the team",
-  criteria: "I have had 1:1s with everyone on the team",
-  tactics: "Schedule 1:1s\nAttend team meetings",
+  criteria: ["I have had 1:1s with everyone on the team"],
+  tactics: ["Schedule 1:1s", "Attend team meetings"],
   status: ""
 };
 

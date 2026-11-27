@@ -310,7 +310,7 @@ body.tsn-page {
 
 .tsn-grid {
   width: 100%;
-  min-width: 1100px;
+  min-width: 1540px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 13px;
@@ -333,7 +333,7 @@ body.tsn-page {
 
 .tsn-grid th,
 .tsn-grid td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #cfd3d8;
   vertical-align: top;
 }
 
@@ -472,20 +472,66 @@ body.tsn-page {
 
 .tsn-cell {
   background: var(--tsn-cell);
-  padding: 0.45rem 0.55rem 0.4rem;
+  padding: 0.35rem 0.45rem 0.3rem;
   position: relative;
-  min-height: 4.2rem;
+  min-height: 2.4rem;
+  cursor: cell;
 }
 
 .tsn-cell.is-filled {
   background: #f7f7f8;
 }
 
-.tsn-cell.is-editing {
+.tsn-cell.is-selected {
   outline: 2px solid var(--tsn-focus);
   outline-offset: -2px;
-  background: #fff;
   z-index: 2;
+  background: #fff;
+}
+
+.tsn-cell.is-editing {
+  outline: 2px solid var(--tsn-black);
+  outline-offset: -2px;
+  background: #fff;
+  z-index: 3;
+  cursor: text;
+}
+
+.tsn-cell.is-amber {
+  background: var(--tsn-amber);
+  color: var(--tsn-amber-ink);
+}
+
+.tsn-cell-view {
+  display: flex;
+  gap: 0.3rem;
+  align-items: flex-start;
+  min-height: 1.35em;
+}
+
+.tsn-cell-obj .tsn-cell-text {
+  font-weight: 700;
+}
+
+.tsn-cell-text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tsn-cell-input {
+  display: block;
+  width: 100%;
+  min-height: 2.4em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  font: inherit;
+  background: transparent;
+  color: inherit;
 }
 
 .tsn-cell.has-empty-criteria::after {
@@ -1084,7 +1130,8 @@ body.tsn-page {
   }
 
   .tsn-cell,
-  .tsn-cell-oc,
+  .tsn-cell-obj,
+  .tsn-cell-crit,
   .tsn-cell-tac,
   .tsn-cell-status {
     display: block;
@@ -1093,13 +1140,15 @@ body.tsn-page {
     box-sizing: border-box;
     cursor: pointer;
     text-align: left;
+    min-height: 44px;
   }
 
   .tsn-cell-hints {
     display: none;
   }
 
-  .tsn-cell-oc::before,
+  .tsn-cell-obj::before,
+  .tsn-cell-crit::before,
   .tsn-cell-tac::before,
   .tsn-cell-status::before {
     display: block;
@@ -1109,22 +1158,30 @@ body.tsn-page {
     margin: 0 0 0.2rem;
   }
 
-  .tsn-cell-oc::before {
-    content: "Objective & criteria";
+  .tsn-cell-obj::before {
+    content: "Objective";
+  }
+
+  .tsn-cell-crit::before {
+    content: "Criterion";
   }
 
   .tsn-cell-tac::before {
-    content: "Tactics";
+    content: "Tactic";
   }
 
   .tsn-cell-status::before {
     content: "Status";
   }
 
-  .tsn-cell-edit,
-  .tsn-line-text {
-    pointer-events: none;
-    color: var(--kld-ink);
+  .tsn-cell-crit:not(.is-filled):not(.is-editing):not(.is-selected),
+  .tsn-cell-tac:not(.is-filled):not(.is-editing):not(.is-selected) {
+    display: none;
+  }
+
+  .tsn-cell-input {
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .tsn-facet-name,

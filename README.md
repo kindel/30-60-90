@@ -7,11 +7,11 @@ The app opens on the plan itself: the default template filled in as editable tex
 ## What it does
 
 1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), two starter facets each, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm. Opening a saved JSON file loads that file.
-2. **Edit in place:** The first line of a cell is the objective. Enter adds a checkable criterion. Tab moves to Tactics. Status stays hidden until you toggle it on.
+2. **Edit in place:** The grid is a spreadsheet. The objective is one cell. Each criterion and each tactic is its own cell. Type to replace. Enter, F2, or double-click to edit. Esc cancels. Arrows move. Tab moves across. Enter on the last criterion or tactic of a facet adds another. Status stays hidden until you toggle it on. On a portrait phone the horizons stay tabbed and you tap a cell to edit it.
 3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Move it to Tactics, rewrite it as "I can…", or keep it. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
 4. **Open:** Load an existing `.json` plan file, or import a historical XLSX from under Open. The app rejects files that are not `kindel.30-60-90`. v1 files still open.
 5. **Save:** Download the plan as JSON. This is the canonical format. The filename uses the hire name or seat title.
-6. **Export XLSX:** Download a spreadsheet that matches the historical grid layout. One sheet named "30-60-90" with horizons as column groups. Status is always included here, because that is the historical layout.
+6. **Export XLSX:** Download a spreadsheet with one Excel cell per plan element. One sheet named "30-60-90" with horizons as column groups. Extra criteria and tactics write extra rows. Status is always included here, because that is the historical layout.
 7. **Export Markdown:** Download a readable plan with ✓ criteria and ▪ tactics. Status is omitted unless the toggle is on.
 
 ## What it does not do
