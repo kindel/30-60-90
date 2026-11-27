@@ -1075,8 +1075,13 @@ assertEqual(clipText, copyEd.plan.lenses[0].facets[0].cells.d30.objective, "copy
 assert(copyEd._copyPrevented, "copy with clipboardData prevents the native empty copy");
 var execLog = [];
 var priorDoc = global.document;
-var priorClip = Object.getOwnPropertyDescriptor(navigator, "clipboard");
-Object.defineProperty(navigator, "clipboard", { configurable: true, writable: true, value: undefined });
+var navObj = typeof navigator !== "undefined" ? navigator : null;
+var priorClip = navObj ? Object.getOwnPropertyDescriptor(navObj, "clipboard") : null;
+if (navObj) {
+  try {
+    Object.defineProperty(navObj, "clipboard", { configurable: true, writable: true, value: undefined });
+  } catch (err) {}
+}
 global.document = {
   createElement: function () {
     return {
@@ -1095,8 +1100,7 @@ global.document = {
 assert(copyEd.copySelected(), "copy without Clipboard API uses the execCommand fallback");
 assert(execLog.indexOf("copy") >= 0, "fallback calls execCommand copy");
 global.document = priorDoc;
-if (priorClip) Object.defineProperty(navigator, "clipboard", priorClip);
-else delete navigator.clipboard;
+if (navObj && priorClip) Object.defineProperty(navObj, "clipboard", priorClip);
 
 var jsonEd = makeEditor(editorPlan);
 jsonEd.bundle = extraBundle;
