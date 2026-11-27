@@ -1220,6 +1220,11 @@
     var self = this;
 
     this.root.addEventListener("click", function (e) { self.onClick(e); });
+    this.root.addEventListener("mousedown", function (e) {
+      self._pointerOutsideCell = !e.target.closest(".tsn-cell") ||
+        !!e.target.closest("[data-action]") ||
+        !!e.target.closest(".tsn-flag-card");
+    }, true);
     this.root.addEventListener("mousedown", function (e) { self.onCellMouseDown(e); });
     this.root.addEventListener("dblclick", function (e) { self.onCellDblClick(e); });
     this.root.addEventListener("input", function (e) { self.onInput(e); });
@@ -1232,6 +1237,9 @@
     this.root.addEventListener("dragover", function (e) { self.onDragOver(e); });
     this.root.addEventListener("drop", function (e) { self.onDrop(e); });
 
+    document.addEventListener("mousedown", function (e) {
+      if (!self.root.contains(e.target)) self._pointerOutsideCell = true;
+    }, true);
     document.addEventListener("click", function (e) {
       if (!self.root.contains(e.target)) {
         self.openMenuOpen = false;
@@ -1276,6 +1284,7 @@
 
   ThirtySixtyNinetyEditor.prototype.onCellDblClick = function (e) {
     if (isNarrow()) return;
+    if (e.target.closest(".tsn-cell-input")) return;
     var cell = e.target.closest(".tsn-cell");
     if (!cell || e.target.closest("[data-action]") || e.target.closest(".tsn-flag-card")) return;
     var field = cell.getAttribute("data-field");
@@ -1559,12 +1568,25 @@
       return;
     }
     if (isNarrow()) return;
+    if (e.target.closest && (e.target.closest("[data-action]") || e.target.closest(".tsn-flag-card"))) return;
+    var gridCell = e.target.closest ? e.target.closest(".tsn-cell") : null;
+    if (!gridCell || gridCell.getAttribute("data-field") === "pad") return;
     if (this.sel && !this.editing) this.onGridKeydown(e);
   };
 
   ThirtySixtyNinetyEditor.prototype.onFocusIn = function (e) {
     var cell = e.target.closest(".tsn-cell");
-    if (cell && e.target.classList.contains("tsn-cell-input")) cell.classList.add("is-editing");
+    if (!cell) return;
+    if (e.target.classList.contains("tsn-cell-input")) {
+      cell.classList.add("is-editing");
+      return;
+    }
+    if (e.target !== cell) return;
+    if (cell.getAttribute("data-field") === "pad") return;
+    var sel = selFromEl(cell);
+    if (!sel || sameSel(this.sel, sel) || this.editing) return;
+    this.sel = sel;
+    this.markSelected();
   };
 
   ThirtySixtyNinetyEditor.prototype.onFocusOut = function (e) {
@@ -1575,11 +1597,15 @@
     var next = e.relatedTarget;
     if (next && cell && cell.contains(next)) return;
     this.commitEdit();
+    var leaveGrid = this._pointerOutsideCell || !!(next && this.root.contains(next) && !(cell && cell.contains(next)));
     var self = this;
     setTimeout(function () {
+      self._pointerOutsideCell = false;
       if (!self.root || self.editing || self._rendering) return;
-      self.render({ keepFocus: true });
-      self.focusSelected();
+      var active = document.activeElement;
+      var keepOutside = leaveGrid || (active && self.root.contains(active) && !active.closest(".tsn-cell"));
+      self.render({ keepFocus: !keepOutside });
+      if (!keepOutside) self.focusSelected();
     }, 0);
   };
 
@@ -1593,7 +1619,7 @@
       this.pasteIntoSel(text);
       return;
     }
-    if (this.sel && !this.editing) {
+    if (this.sel && !this.editing && e.target.closest && e.target.closest(".tsn-cell")) {
       e.preventDefault();
       this.pasteIntoSel(text);
     }
@@ -1806,7 +1832,7 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.moveSel = function (dir) {
-    if (!this.sel) return;
+    if (!this.sel) return false;
     var coords = this.gridCoords();
     var current = this.sel;
     var idx = -1;
@@ -1815,7 +1841,7 @@
     });
     if (idx < 0) {
       if (coords[0]) this.selectCell(coords[0]);
-      return;
+      return !!coords[0];
     }
     var next = idx;
     if (dir === "right") next = Math.min(coords.length - 1, idx + 1);
@@ -1828,14 +1854,15 @@
       col.forEach(function (c, i) {
         if (sameSel(c, current)) colIdx = i;
       });
-      if (colIdx < 0) return;
+      if (colIdx < 0) return false;
       var dest = dir === "down" ? colIdx + 1 : colIdx - 1;
-      if (dest < 0 || dest >= col.length) return;
+      if (dest < 0 || dest >= col.length) return false;
       this.selectCell(col[dest]);
-      return;
+      return true;
     }
-    if (next === idx) return;
+    if (next === idx) return false;
     this.selectCell(coords[next]);
+    return true;
   };
 
   ThirtySixtyNinetyEditor.prototype.onGridKeydown = function (e) {
@@ -1844,7 +1871,11 @@
     if (e.key === "ArrowLeft") { e.preventDefault(); this.moveSel("left"); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); this.moveSel("down"); return; }
     if (e.key === "ArrowUp") { e.preventDefault(); this.moveSel("up"); return; }
-    if (e.key === "Tab") { e.preventDefault(); this.moveSel(e.shiftKey ? "left" : "right"); return; }
+    if (e.key === "Tab") {
+      if (!this.moveSel(e.shiftKey ? "left" : "right")) return;
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Enter" || e.key === "F2") {
       e.preventDefault();
       this.startEdit(this.sel);
@@ -1883,6 +1914,15 @@
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       this.finishEditAndMove("down");
+      return;
+    }
+    if ((e.key === "Backspace" || e.key === "Delete") &&
+        this.sel && (this.sel.field === "criteria" || this.sel.field === "tactics") &&
+        !String(e.target.value || "").trim()) {
+      e.preventDefault();
+      this.editing = false;
+      this.editOriginal = "";
+      this.clearOrRemoveSelected();
     }
   };
 
@@ -1907,8 +1947,14 @@
         return;
       }
     }
+    this.clampSel();
     this.render({ keepFocus: true });
-    this.moveSel(dir);
+    if (!this.moveSel(dir) && (dir === "left" || dir === "right")) {
+      var exit = dir === "left"
+        ? this.root.querySelector(".tsn-people-link")
+        : this.root.querySelector(".tsn-add-180") || this.root.querySelector(".tsn-people-link");
+      if (exit && exit.focus) exit.focus();
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.clearOrRemoveSelected = function () {
@@ -1918,6 +1964,7 @@
     var text = cellItemText(cell, sel.field, sel.index);
     if (String(text).trim()) {
       this.writeSel(sel, "");
+      this.clampSel();
       this.touch();
       this.render({ keepFocus: true });
       this.focusSelected();
@@ -1932,17 +1979,36 @@
     } else {
       removeItem(cell, sel.field, sel.index);
     }
-    var nextIndex = Math.max(0, Math.min(sel.index, compactItems(cell[sel.field]).length - 1));
-    this.sel = {
-      lensId: sel.lensId,
-      facetId: sel.facetId,
-      horizonId: sel.horizonId,
-      field: sel.field,
-      index: nextIndex
-    };
+    this.clampSel();
     this.touch();
     this.render({ keepFocus: true });
     this.focusSelected();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.clampSel = function () {
+    if (!this.sel || !this.plan) return;
+    var coords = this.gridCoords();
+    if (!coords.length) {
+      this.sel = null;
+      return;
+    }
+    var current = this.sel;
+    var found = coords.some(function (c) { return sameSel(c, current); });
+    if (found) return;
+    var lens = getLens(this.plan, current.lensId);
+    var facet = getFacet(lens, current.facetId);
+    if (!facet) {
+      this.sel = coords[0];
+      return;
+    }
+    var last = Math.max(0, this.facetSlotCount(lens, facet) - 1);
+    this.sel = {
+      lensId: current.lensId,
+      facetId: current.facetId,
+      horizonId: current.horizonId,
+      field: current.field,
+      index: Math.min(current.index || 0, last)
+    };
   };
 
   ThirtySixtyNinetyEditor.prototype.copySelected = function () {
@@ -1973,6 +2039,8 @@
         field: sel.field,
         index: sel.index + lines.length - 1
       };
+    } else if (sel.field === "objective" || sel.field === "status") {
+      this.writeSel(sel, String(text || "").replace(/\r\n/g, "\n").replace(/^\n+|\n+$/g, ""));
     } else {
       this.writeSel(sel, lines[0] || String(text || "").replace(/\n/g, " ").trim());
     }
@@ -2035,13 +2103,16 @@
       cell.tactics = compactItems(tacs);
       pruneDismissals(cell);
       this.touch();
-      this.selectCell({
+      this.sel = {
         lensId: lensId,
         facetId: facetId,
         horizonId: horizonId,
         field: "tactics",
         index: Math.max(0, cell.tactics.length - 1)
-      });
+      };
+      this.editing = false;
+      this.render({ keepFocus: true });
+      this.focusSelected();
       return;
     }
     if (mode === "rewrite") {
@@ -2632,7 +2703,12 @@
     if (host) host.setAttribute("data-narrow-horizon", this.narrowHorizon);
     this._rendering = false;
     if (focus) this.sel = focus;
-    this.focusSelected();
+    if (this.sel) {
+      this.focusSelected();
+    } else if (!isNarrow()) {
+      var first = this.root.querySelector('.tsn-cell[data-field]:not([data-field="pad"])');
+      if (first) first.tabIndex = 0;
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.renderLensGroup = function (lens) {
@@ -2753,6 +2829,7 @@
     if (editing) classes.push("is-editing");
     if (emptyCrit) classes.push("has-empty-criteria");
     if (flags.length) classes.push("is-amber");
+    if ((field === "criteria" || field === "tactics") && (index || 0) === 0) classes.push("tsn-cell-lead");
     var rs = rowspan && rowspan > 1 ? ' rowspan="' + rowspan + '"' : "";
     var hint = "";
     if (!filled && !editing) {

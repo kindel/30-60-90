@@ -114,8 +114,12 @@ assertEqual(api.NARROW_MAX_PX, 700, "JS narrow max is 700");
 assert(css.indexOf("@media (max-width: 700px)") >= 0, "CSS stacks to tabs at 700px");
 assert(css.indexOf("@media (max-width: 900px)") < 0, "tabs must not kick in at 900px");
 assert(src.indexOf("900px") < 0, "JS must not use 900px as the narrow breakpoint");
-assert(css.indexOf('.tsn-cell-crit:not([data-index="0"])') >= 0, "phone hides extra empty criteria only");
-assert(css.indexOf('.tsn-cell-tac:not([data-index="0"])') >= 0, "phone hides extra empty tactics only");
+assert(css.indexOf(".tsn-cell-crit:not(.tsn-cell-lead)") >= 0, "phone hides extra empty criteria only");
+assert(css.indexOf(".tsn-cell-tac:not(.tsn-cell-lead)") >= 0, "phone hides extra empty tactics only");
+assert(src.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.clampSel") >= 0, "selection clamps after a list shrinks");
+assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
+assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");

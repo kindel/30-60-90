@@ -1174,8 +1174,8 @@ body.tsn-page {
     content: "Status";
   }
 
-  .tsn-cell-crit:not([data-index="0"]):not(.is-filled):not(.is-editing):not(.is-selected),
-  .tsn-cell-tac:not([data-index="0"]):not(.is-filled):not(.is-editing):not(.is-selected) {
+  .tsn-cell-crit:not(.tsn-cell-lead):not(.is-filled):not(.is-editing):not(.is-selected),
+  .tsn-cell-tac:not(.tsn-cell-lead):not(.is-filled):not(.is-editing):not(.is-selected) {
     display: none;
   }
 
