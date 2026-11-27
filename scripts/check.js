@@ -122,6 +122,8 @@ assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.notePendingEdit") >= 0, "p
 assert(src.indexOf("self._blurRefreshWaiting = true") >= 0, "blur refresh waits while a confirm dialog is open");
 assert(src.indexOf("this._blurRefreshWaiting && !opts.keepFocus") >= 0, "closing the dialog runs the postponed blur refresh");
 assert(src.indexOf("this.commitEdit();\n    var cellEl = el.closest(\".tsn-cell\");") >= 0, "redirect actions commit the active edit first");
+assert(src.indexOf("this.notePendingEdit(input.value)") >= 0, "type-to-replace records the pending edit");
+assert(src.indexOf("this._pendingDirty = false;\n      this._pendingValue = null;\n      this.clearOrRemoveSelected()") >= 0, "empty Backspace clears pending edit before save");
 assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
 assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
 assert(src.indexOf("opts.keepFocus && this.sel") >= 0, "render focuses the grid only when keepFocus is set");
@@ -937,6 +939,60 @@ var editBtn = {
 editMove.redirectLine(editBtn, "move");
 assertEqual(JSON.stringify(editCell.criteria), JSON.stringify([]), "editing Move to Tactics commits then clears the criterion");
 assertEqual(JSON.stringify(editCell.tactics), JSON.stringify(["Meet the whole team"]), "Move to Tactics uses the typed criterion, not the stale cell");
+
+console.log("Testing type-to-replace pending edit and empty Backspace save...");
+var replaceStore = {};
+global.localStorage = {
+  setItem: function (k, v) { replaceStore[k] = v; },
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(replaceStore, k) ? replaceStore[k] : null; },
+  removeItem: function (k) { delete replaceStore[k]; }
+};
+var replaceEd = makeEditor(editorPlan);
+replaceEd.sel = firstCoord(replaceEd.plan, "objective", 0);
+replaceEd.render = function () {};
+replaceEd.focusSelected = function () {};
+var replaceInput = {
+  value: replaceEd.plan.lenses[0].facets[0].cells.d30.objective,
+  focus: function () {},
+  setSelectionRange: function () {}
+};
+var origReplaceQs = replaceEd.root.querySelector.bind(replaceEd.root);
+replaceEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-cell-input") return replaceInput;
+  return origReplaceQs(sel);
+};
+replaceEd.startEdit(replaceEd.sel, { replace: "x" });
+assertEqual(replaceInput.value, "x", "type-to-replace puts the typed character in the textarea");
+assert(replaceEd._pendingDirty, "type-to-replace marks pending dirty without an input event");
+assertEqual(replaceEd._pendingValue, "x", "type-to-replace stores the replacement as the pending value");
+var replaceSnap = JSON.parse(replaceStore[api.STORE_KEYS[0]]);
+assertEqual(replaceSnap.lenses[0].facets[0].cells.d30.objective, "x", "type-to-replace writes the character to the draft");
+assertEqual(replaceEd.plan.lenses[0].facets[0].cells.d30.objective, editorPlan.lenses[0].facets[0].cells.d30.objective, "type-to-replace does not commit until blur or save");
+
+var bsEd = makeEditor(editorPlan);
+var bsCell = bsEd.plan.lenses[0].facets[0].cells.d30;
+bsCell.criteria = ["Meet the team"];
+bsEd.sel = firstCoord(bsEd.plan, "criteria", 0);
+bsEd.editing = true;
+bsEd.editOriginal = "Meet the team";
+bsEd._pendingDirty = true;
+bsEd._pendingValue = "";
+bsEd.render = function () {};
+bsEd.focusSelected = function () {};
+var bsPrevented = false;
+bsEd.onEditKeydown({
+  key: "Backspace",
+  preventDefault: function () { bsPrevented = true; },
+  target: { value: "" }
+});
+assert(bsPrevented, "Backspace on an empty criterion textarea is handled");
+assertEqual(bsEd.editing, false, "empty Backspace ends the edit");
+assertEqual(bsEd._pendingDirty, false, "empty Backspace clears pending dirty");
+assertEqual(bsEd._pendingValue, null, "empty Backspace clears pending value");
+bsEd.commitAllEdits();
+bsEd.setDirty(false);
+assertEqual(bsEd._pendingDirty, false, "save after empty Backspace does not leave the unload warning armed");
+global.localStorage = prevStorage;
 
 console.log("Testing computeHorizons...");
 var horizons = api.computeHorizons("2024-03-01", false, template);

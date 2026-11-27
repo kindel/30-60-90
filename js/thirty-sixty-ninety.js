@@ -1842,6 +1842,7 @@
     if (opts.replace != null) {
       input.value = opts.replace;
       input.setSelectionRange(input.value.length, input.value.length);
+      this.notePendingEdit(input.value);
     } else if (opts.selectAll) {
       input.select();
     } else {
@@ -1977,6 +1978,8 @@
       e.preventDefault();
       this.editing = false;
       this.editOriginal = "";
+      this._pendingDirty = false;
+      this._pendingValue = null;
       this.clearOrRemoveSelected();
     }
   };
