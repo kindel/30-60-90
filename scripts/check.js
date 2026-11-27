@@ -142,6 +142,7 @@ assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.adoptPlan") >= 0, "opening
 assert(src.indexOf("header1 = [KIND, \"\"]") >= 0, "new XLSX exports stamp kindel.30-60-90 in A1");
 assert(src.indexOf("String(row1[0] || \"\").indexOf(KIND) === 0") >= 0, "import treats A1 as the one-item-per-cell marker");
 assert(src.indexOf("days\\s+-\\s+[a-z]{3,}") < 0, "dated headers are not the new-format signal");
+assert(src.indexOf("slotHasBody") < 0, "import does not guess format from extra unlabeled rows");
 assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
 assert(src.indexOf("if (e.target.closest && e.target.closest(\"[data-action]\")) return;") >= 0, "grid shortcuts ignore toolbar buttons");
 assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a keyboard path");
@@ -830,6 +831,21 @@ XLSX.utils.book_append_sheet(histDatedWb, XLSX.utils.aoa_to_sheet(histDated), "3
 var histDatedPlan = api.importXlsx(histDatedWb);
 var histDatedUsers = histDatedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
 assertEqual(JSON.stringify(histDatedUsers.cells.d30.criteria), JSON.stringify(["I can name users", "I can list segments"]), "historical dated headers still split newline-joined criteria");
+var histUnlabeled = [
+  ["", "", "30 Days - Jul 1, 2024 - Land", "", "", "", "60 Days - Jul 31, 2024 - Understand Direction", "", "", "", "90 Days - Aug 30, 2024 - Set Challenge", "", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status"],
+  ["Customer", "Users", "Know them", "I can name users\nI can list segments", "Talk to them", "", "", "", "", "", "", "", "", ""],
+  ["", "", "", "I can still a\nI can still b", "", "", "", "", "", "", "", "", "", ""]
+];
+var histUnlabeledWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histUnlabeledWb, XLSX.utils.aoa_to_sheet(histUnlabeled), "30-60-90");
+var histUnlabeledPlan = api.importXlsx(histUnlabeledWb);
+var histUnlabeledUsers = histUnlabeledPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(
+  JSON.stringify(histUnlabeledUsers.cells.d30.criteria),
+  JSON.stringify(["I can name users", "I can list segments", "I can still a", "I can still b"]),
+  "unmarked files still split newline-joined criteria even with an unlabeled populated row"
+);
 
 console.log("Testing editor focus, paste, and selection...");
 var editorPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });

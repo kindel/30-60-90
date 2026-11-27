@@ -1048,19 +1048,6 @@
     };
 
     var oneItemPerCell = String(row1[0] || "").indexOf(KIND) === 0;
-    if (!oneItemPerCell) {
-      var di;
-      for (di = 2; di < data.length; di++) {
-        var slotRow = data[di] || [];
-        if (String(slotRow[1] || "").trim()) continue;
-        var slotHasBody = false;
-        var si;
-        for (si = 2; si < slotRow.length; si++) {
-          if (String(slotRow[si] || "").trim()) { slotHasBody = true; break; }
-        }
-        if (slotHasBody) { oneItemPerCell = true; break; }
-      }
-    }
 
     function xlsxCellItems(value) {
       var s = String(value == null ? "" : value).replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
