@@ -304,6 +304,7 @@ body.tsn-page {
   border: 2px solid var(--tsn-black);
   border-radius: 10px;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--kld-paper);
 }
 
@@ -948,7 +949,8 @@ body.tsn-page {
   display: none !important;
 }
 
-@media (max-width: 900px) {
+/* Tabs and stacked cards only on portrait-phone widths. 701px and up is one grid. */
+@media (max-width: 700px) {
   html {
     -webkit-text-size-adjust: 100%;
   }

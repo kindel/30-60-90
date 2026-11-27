@@ -15,6 +15,7 @@
     "shadow", "visit", "review", "join", "learn", "ride", "onboard"
   ];
   var TACTIC_PHRASES = ["sit with", "set up"];
+  var NARROW_MAX_PX = 700;
 
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -953,7 +954,8 @@
   }
 
   function isNarrow() {
-    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+    return typeof window !== "undefined" && window.matchMedia &&
+      window.matchMedia("(max-width: " + NARROW_MAX_PX + "px)").matches;
   }
 
   function loadTemplates(done) {
@@ -2634,7 +2636,8 @@
     planHasCellContent: planHasCellContent,
     isUntouchedEmptyDraft: isUntouchedEmptyDraft,
     readStoredDraft: readStoredDraft,
-    STORE_KEYS: STORE_KEYS
+    STORE_KEYS: STORE_KEYS,
+    NARROW_MAX_PX: NARROW_MAX_PX
   };
 
 })(typeof window !== "undefined" ? window : global);
