@@ -6,12 +6,12 @@ The app opens on the plan itself: the default template filled in as editable tex
 
 ## What it does
 
-1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), two starter facets each, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm. Opening a saved JSON file loads that file.
-2. **Edit in place:** The first line of a cell is the objective. Enter adds a checkable criterion. Tab moves to Tactics. Status stays hidden until you toggle it on.
-3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Move it to Tactics, rewrite it as "I can…", or keep it. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
+1. **Filled grid:** A fresh load shows four lenses (Customer, Business, Technical, Organization), starter facets including Mechanisms on every lens, and Day 30 / 60 / 90, with the template's example objectives, criteria, and tactics already in the cells. Edit or delete from there. **Start blank** clears the writing after a confirm and keeps a Mechanisms row on every lens. **Use template** is a dropdown of every template in `templates/index.json`, named by seat title (VP of Product for the shipped file). Picking one replaces the current plan's writing after a confirm; names, the start date, and horizon dates stay, and Undo restores the previous writing. Opening a saved JSON file loads that file. An empty saved draft, or one whose template version is older than the file it came from, loads the newer example. A draft with real writing is left alone and offered the newer example instead.
+2. **Edit in place:** The grid is a spreadsheet. The objective is one cell. Each criterion and each tactic is its own cell. Type to replace. Enter, F2, or double-click to edit. Esc cancels. Arrows move. Tab moves across. Enter on the last criterion or tactic of a facet adds another. Status stays hidden until you toggle it on. On a portrait phone the horizons stay tabbed and you tap a cell to edit it.
+3. **Redirect tasks:** A criterion that reads like a tactic turns amber. Tab from that cell reaches Move to Tactics, Rewrite, and Keep. Escape returns to the cell. Markdown export (and print) opens a Plan check first. JSON Save never blocks.
 4. **Open:** Load an existing `.json` plan file, or import a historical XLSX from under Open. The app rejects files that are not `kindel.30-60-90`. v1 files still open.
-5. **Save:** Download the plan as JSON. This is the canonical format. The filename uses the hire name or seat title.
-6. **Export XLSX:** Download a spreadsheet that matches the historical grid layout. One sheet named "30-60-90" with horizons as column groups. Status is always included here, because that is the historical layout.
+5. **Save:** Download the plan as JSON. This is the canonical format. The filename uses the hire name or seat title. Saves write schema version 2 so an older editor rejects the file instead of joining array criteria.
+6. **Export XLSX:** Download a spreadsheet with one Excel cell per plan element. One sheet named "30-60-90" with horizons as column groups. Extra criteria and tactics write extra rows. Status is always included here, because that is the historical layout.
 7. **Export Markdown:** Download a readable plan with ✓ criteria and ▪ tactics. Status is omitted unless the toggle is on.
 
 ## What it does not do
@@ -39,11 +39,9 @@ Excel is an export format, not a reload format. The XLSX export matches the hist
 
 ## Templates
 
-Starter names, the default seat title, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default. 2.0 ships one file, `templates/product-senior.json`. A new plan copies those examples into the cells.
+Starter names, the default seat title, hints, examples, and help text live under `templates/`. `templates/index.json` lists them and names the default. 2.0 ships one file, `templates/product-senior.json`. A new plan copies those examples into the cells. **Use template** is always a dropdown of those files, even when there is only one.
 
 Over http the app fetches those JSON files. `index.html` still opens from disk: under `file://`, fetch is blocked, so the app falls back to `js/templates.js`, which `scripts/build-templates.js` generates. `scripts/check.js` fails when that bundle is stale.
-
-Adding a template later is a JSON file and a manifest line. There is no picker in 2.0, so a second entry does not change the UI.
 
 Hardware and GM/SVP facet lists from v1 live in `templates/facet-sets.json` until they become their own templates.
 

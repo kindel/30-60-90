@@ -62,13 +62,19 @@ manifest.templates.forEach(function (entry) {
 });
 assert(template, "default template file loaded");
 assert(template.seatTitle, "default template has a seat title");
+assertEqual(template.version, 2, "product-senior version is 2 so older empty drafts refresh");
+function hasItems(value) {
+  if (Array.isArray(value)) return value.some(function (v) { return String(v || "").trim(); });
+  return String(value || "").trim().length > 0;
+}
+
 ["d30", "d60", "d90"].forEach(function (hid) {
   template.lenses.forEach(function (lens) {
     (lens.facets || []).forEach(function (facet) {
       var ex = facet.cells && facet.cells[hid] && facet.cells[hid].example;
       assert(ex && String(ex.objective || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs an example objective");
-      assert(ex && String(ex.criteria || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example criteria");
-      assert(ex && String(ex.tactics || "").trim(), lens.id + "/" + facet.id + "/" + hid + " needs example tactics");
+      assert(ex && Array.isArray(ex.criteria) && hasItems(ex.criteria), lens.id + "/" + facet.id + "/" + hid + " needs example criteria as an array");
+      assert(ex && Array.isArray(ex.tactics) && hasItems(ex.tactics), lens.id + "/" + facet.id + "/" + hid + " needs example tactics as an array");
     });
   });
 });
@@ -109,6 +115,46 @@ assertEqual(api.NARROW_MAX_PX, 700, "JS narrow max is 700");
 assert(css.indexOf("@media (max-width: 700px)") >= 0, "CSS stacks to tabs at 700px");
 assert(css.indexOf("@media (max-width: 900px)") < 0, "tabs must not kick in at 900px");
 assert(src.indexOf("900px") < 0, "JS must not use 900px as the narrow breakpoint");
+assert(css.indexOf(".tsn-cell-crit:not(.tsn-cell-lead)") >= 0, "phone hides extra empty criteria only");
+assert(css.indexOf(".tsn-cell-tac:not(.tsn-cell-lead)") >= 0, "phone hides extra empty tactics only");
+assert(src.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.clampSel") >= 0, "selection clamps after a list shrinks");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.notePendingEdit") >= 0, "pending cell edits persist and warn before unload");
+assert(src.indexOf("self._blurRefreshWaiting = true") >= 0, "blur refresh waits while a confirm dialog is open");
+assert(src.indexOf("this._blurRefreshWaiting && !opts.keepFocus") >= 0, "closing the dialog runs the postponed blur refresh");
+assert(src.indexOf("this.commitEdit();\n    var cellEl = el.closest(\".tsn-cell\");") >= 0, "redirect actions commit the active edit first");
+assert(src.indexOf("this.notePendingEdit(input.value)") >= 0, "type-to-replace records the pending edit");
+assert(src.indexOf("this._pendingDirty = false;\n      this._pendingValue = null;\n      this.clearOrRemoveSelected()") >= 0, "empty Backspace clears pending edit before save");
+assert(src.indexOf('e.target.closest(".tsn-cell-input")') >= 0, "double-click on the editor textarea is ignored");
+assert(src.indexOf("if (!this.moveSel(e.shiftKey ? \"left\" : \"right\")) return;") >= 0, "Tab at the grid edge leaves the grid");
+assert(src.indexOf("opts.keepFocus && this.sel") >= 0, "render focuses the grid only when keepFocus is set");
+assert(src.indexOf("first.tabIndex = 0") >= 0, "an unselected grid still has a tab stop");
+assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on the clicked control");
+assert(src.indexOf('className: "tsn-seat-title"') >= 0, "blur restore covers the seat title");
+assert(src.indexOf('className: "tsn-facet-name"') >= 0, "blur restore covers a facet name");
+assert(src.indexOf('className: "tsn-start-date-input"') >= 0, "blur restore covers the start date");
+assert(src.indexOf('className: "tsn-horizon-date-input"') >= 0, "blur restore covers a horizon date");
+assert(src.indexOf("notePointerRestoreCaret") >= 0, "blur restore records the caret in name and date inputs");
+assert(src.indexOf("if (isNarrow()) {") >= 0 && src.indexOf("e.key !== \"Tab\"") >= 0, "narrow Tab does not run the desktop textarea handler");
+assert(src.indexOf("execCommand(\"copy\")") >= 0, "copy falls back to execCommand");
+assert(src.indexOf("this._clip") < 0, "unread _clip is gone");
+assert(src.indexOf("ThirtySixtyNinetyEditor.prototype.adoptPlan") >= 0, "opening JSON adopts the plan's template");
+assert(src.indexOf("header1 = [KIND, \"\"]") >= 0, "new XLSX exports stamp kindel.30-60-90 in A1");
+assert(src.indexOf("String(row1[0] || \"\").indexOf(KIND) === 0") >= 0, "import treats A1 as the one-item-per-cell marker");
+assert(src.indexOf("days\\s+-\\s+[a-z]{3,}") < 0, "dated headers are not the new-format signal");
+assert(src.indexOf("slotHasBody") < 0, "import does not guess format from extra unlabeled rows");
+assert(src.indexOf('e.target.closest(".tsn-cell")') >= 0, "paste outside the grid does not overwrite the selected cell");
+assert(src.indexOf("if (e.target.closest && e.target.closest(\"[data-action]\")) return;") >= 0, "grid shortcuts ignore toolbar buttons");
+assert(src.indexOf("this.onFlagKeydown(e)") >= 0, "amber redirect actions have a keyboard path");
+assert(src.indexOf('if (field === "objective" || field === "status") return;') >= 0, "objective and status textarea paste stays native");
+assert(src.indexOf("sel.field === \"objective\" || sel.field === \"status\"") >= 0, "selected objective and status paste keep the full text");
+assertEqual(api.VERSION, 2, "plan schema version is 2");
+assert(src.indexOf('data-action="use-template-menu"') >= 0, "toolbar has a template dropdown");
+assert(src.indexOf('aria-haspopup="menu"') >= 0, "template dropdown is a menu for the keyboard");
+assert(src.indexOf("templateDisplayName") >= 0, "dropdown lists templates by display name");
+assert(src.indexOf('data-action="use-template"') >= 0, "toolbar can apply a template");
+assert(src.indexOf("Replace your plan's writing with the ") >= 0, "apply confirms before replacing writing");
+assert(src.indexOf("shouldAutoApplyTemplate") >= 0, "empty stale drafts auto-load the template");
 
 var facetSets = readJson("templates/facet-sets.json");
 assert(facetSets.sets.hardware, "facet-sets has hardware");
@@ -126,7 +172,7 @@ var plan = api.createNewPlan({
   include180: false
 });
 
-assert(plan.version === 1, "version should be 1");
+assertEqual(plan.version, 2, "new plans write schema version 2");
 assert(plan.kind === "kindel.30-60-90", "kind should be kindel.30-60-90");
 assertEqual(plan.seat.title, "VP Product", "seat title");
 assertEqual(plan.seat.family, "pm", "seat family");
@@ -137,6 +183,7 @@ assertEqual(plan.include180, false, "include180");
 assertEqual(plan.horizons.length, 3, "should have 3 horizons");
 assertEqual(plan.lenses.length, 4, "should have 4 lenses");
 assert(plan.template && plan.template.id === "product-senior", "plan records template id");
+assertEqual(plan.template.version, template.version, "plan records template version");
 
 assertEqual(plan.horizons[0].id, "d30", "first horizon id");
 assertEqual(plan.horizons[0].offsetDays, 30, "first horizon offset");
@@ -151,27 +198,52 @@ assertEqual(plan.lenses[0].id, "customer", "first lens is customer");
 assertEqual(plan.lenses[1].id, "business", "second lens is business");
 assertEqual(plan.lenses[2].id, "technical", "third lens is technical");
 assertEqual(plan.lenses[3].id, "organization", "fourth lens is organization");
-assertEqual(plan.lenses[0].facets.length, 2, "customer has two starter facets");
+assertEqual(plan.lenses[0].facets.length, 3, "customer has three starter facets");
 assertEqual(plan.lenses[0].facets[0].name, "End users", "first customer facet");
 assertEqual(plan.lenses[0].facets[1].name, "Partners", "second customer facet");
+assertEqual(plan.lenses[0].facets[2].name, "Mechanisms", "customer starts with Mechanisms");
 assertEqual(plan.lenses[1].facets[0].name, "Finance", "first business facet");
 assertEqual(plan.lenses[1].facets[1].name, "Strategy", "second business facet");
+assertEqual(plan.lenses[1].facets[2].name, "Mechanisms", "business starts with Mechanisms");
 assertEqual(plan.lenses[2].facets[0].name, "Architecture", "first technical facet");
 assertEqual(plan.lenses[2].facets[1].name, "Quality", "second technical facet");
+assertEqual(plan.lenses[2].facets[2].name, "Mechanisms", "technical starts with Mechanisms");
 assertEqual(plan.lenses[3].facets[0].name, "People", "first organization facet");
-assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "second organization facet");
+assertEqual(plan.lenses[3].facets[1].name, "Mechanisms", "organization starts with Mechanisms");
+plan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), lens.id + " has a Mechanisms facet");
+});
+var customerMech = plan.lenses[0].facets[2].cells.d30;
+assertEqual(customerMech.objective, "Learn the signal", "customer Mechanisms d30 objective");
+assert(customerMech.tactics.some(function (t) { return t.indexOf("customer-signal") >= 0; }), "customer Mechanisms cites a weekly signal review");
+var businessMech = plan.lenses[1].facets[2].cells.d30;
+assert(businessMech.tactics.some(function (t) { return t.indexOf("MBR") >= 0; }), "business Mechanisms cites the monthly business review");
+var techMech = plan.lenses[2].facets[2].cells.d30;
+assert(techMech.tactics.some(function (t) { return t.indexOf("architecture review") >= 0; }), "technical Mechanisms cites an architecture review");
+var orgMech = plan.lenses[3].facets[1].cells;
+assertEqual(orgMech.d30.objective, "Learn how we hire", "org Mechanisms d30 is hiring");
+assert(orgMech.d30.criteria[0].indexOf("req process") >= 0, "org Mechanisms d30 covers the req process");
+assertEqual(orgMech.d60.objective, "Define the hiring plan", "org Mechanisms d60 is the hiring plan");
+assert(orgMech.d60.criteria[0].indexOf("backwards from the plan") >= 0, "org Mechanisms d60 works backwards from the plan");
+assertEqual(orgMech.d90.objective, "Post the roles", "org Mechanisms d90 is posting roles");
+assert(orgMech.d90.criteria[0].indexOf("Three Sr. Manager PM roles are posted") >= 0, "org Mechanisms d90 posts three Sr Mgr PM roles");
+assert(orgMech.d90.tactics.indexOf("Post Sr Mgr PM roles") >= 0, "org Mechanisms d90 posts the roles");
+assert(orgMech.d90.tactics.indexOf("Train the interview loop") >= 0, "org Mechanisms d90 trains the loop");
 
 var endUsersD30 = plan.lenses[0].facets[0].cells.d30;
 assertEqual(endUsersD30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "new plan copies example objective");
-assertEqual(endUsersD30.criteria, template.lenses[0].facets[0].cells.d30.example.criteria, "new plan copies example criteria");
-assertEqual(endUsersD30.tactics, template.lenses[0].facets[0].cells.d30.example.tactics, "new plan copies example tactics");
+assertEqual(JSON.stringify(endUsersD30.criteria), JSON.stringify(template.lenses[0].facets[0].cells.d30.example.criteria), "new plan copies example criteria");
+assertEqual(JSON.stringify(endUsersD30.tactics), JSON.stringify(template.lenses[0].facets[0].cells.d30.example.tactics), "new plan copies example tactics");
+assert(Array.isArray(endUsersD30.criteria), "new plan stores criteria as an array");
+assert(Array.isArray(endUsersD30.tactics), "new plan stores tactics as an array");
+assert(endUsersD30.tactics.length >= 2, "template tactics split into individual items");
 assert(api.planHasCellContent(plan), "filled new plan has cell content");
 
 ["d30", "d60", "d90"].forEach(function (hid) {
   plan.lenses.forEach(function (lens) {
     lens.facets.forEach(function (facet) {
       var cell = facet.cells[hid];
-      assert(cell && cell.objective && cell.criteria && cell.tactics,
+      assert(cell && cell.objective && api.filledItems(cell.criteria).length && api.filledItems(cell.tactics).length,
         lens.id + "/" + facet.id + "/" + hid + " is filled from the template");
     });
   });
@@ -225,6 +297,54 @@ var keptFilled = api.readStoredDraft(memoryStore(v2Filled));
 assert(keptFilled && api.planHasCellContent(keptFilled), "filled draft is kept");
 assertEqual(keptFilled.seat.title, template.seatTitle, "filled draft keeps the template seat title");
 
+console.log("Testing apply template...");
+assertEqual(api.templateApplyConfirmMessage(template),
+  "Replace your plan's writing with the " + template.seatTitle + " example?",
+  "confirm names the VP of Product example");
+assertEqual(api.listTemplates().length, 1, "one shipped template still lists in the dropdown");
+assertEqual(api.templateDisplayName(bundle, api.listTemplates()[0]), template.seatTitle, "dropdown names the VP of Product template");
+api.setBundle(extraBundle);
+assertEqual(api.listTemplates().length, 2, "a second manifest entry lists both templates");
+assertEqual(api.templateDisplayName(extraBundle, extraBundle.manifest.templates[1]), "Extra", "dropdown falls back to the manifest label");
+api.setBundle(bundle);
+
+var staleEmpty = JSON.parse(JSON.stringify(startedBlank));
+staleEmpty.template = { id: "product-senior", version: 1 };
+staleEmpty.person = { name: "Ada", role: "hire" };
+staleEmpty.manager = { name: "Grace" };
+staleEmpty.horizons[0].name = "Keep this name";
+staleEmpty.horizons[0].dateManual = true;
+assert(api.shouldAutoApplyTemplate(staleEmpty, template), "empty older draft auto-applies");
+assert(!api.shouldOfferTemplateUpdate(staleEmpty, template), "empty older draft does not only offer");
+
+var currentEmpty = JSON.parse(JSON.stringify(staleEmpty));
+currentEmpty.template = { id: "product-senior", version: template.version };
+assert(!api.shouldAutoApplyTemplate(currentEmpty, template), "empty current-version Start blank stays blank");
+assert(!api.shouldOfferTemplateUpdate(currentEmpty, template), "empty current-version draft is not offered");
+
+var noContentNoStamp = JSON.parse(JSON.stringify(startedBlank));
+delete noContentNoStamp.template;
+assert(api.shouldAutoApplyTemplate(noContentNoStamp, template), "empty draft with no template stamp auto-applies");
+
+var staleFilled = JSON.parse(JSON.stringify(defaulted));
+staleFilled.template = { id: "product-senior", version: 1 };
+staleFilled.person.name = "Ada";
+assert(!api.shouldAutoApplyTemplate(staleFilled, template), "filled older draft is not auto-applied");
+assert(api.shouldOfferTemplateUpdate(staleFilled, template), "filled older draft is offered the newer example");
+
+var applied = api.applyTemplateToPlan(JSON.parse(JSON.stringify(staleEmpty)), template);
+assert(api.planHasCellContent(applied), "apply fills cells from the template");
+assertEqual(applied.person.name, "Ada", "apply keeps the hire name");
+assertEqual(applied.manager.name, "Grace", "apply keeps the manager name");
+assertEqual(applied.startDate, "2024-06-01", "apply keeps the start date");
+assertEqual(applied.horizons[0].date, staleEmpty.horizons[0].date, "apply keeps horizon dates");
+assertEqual(applied.horizons[0].name, "Keep this name", "apply keeps horizon names");
+assertEqual(applied.template.id, "product-senior", "apply records the template id");
+assertEqual(applied.template.version, template.version, "apply records the template version");
+assert(!applied.startedBlank, "apply clears startedBlank");
+assertEqual(applied.seat.title, template.seatTitle, "apply uses the template seat title");
+assertEqual(applied.lenses[0].facets[0].cells.d30.objective, template.lenses[0].facets[0].cells.d30.example.objective, "apply copies example objectives");
+
 console.log("Testing createNewPlan with 180 days...");
 var plan180 = api.createNewPlan({
   seatTitle: "SVP Engineering",
@@ -253,6 +373,17 @@ assertEqual(v1.version, 1, "v1 version");
 assert(!v1.template, "v1 fixture has no template field");
 var v1Customer = v1.lenses.find(function (l) { return l.id === "customer"; });
 assert(v1Customer.facets.some(function (f) { return f.name === "End-customer"; }), "v1 facets preserved");
+assert(typeof v1.lenses[0].facets[0].cells.d30.criteria === "string", "v1 stores criteria as a string");
+var migrated = api.hydratePlan(JSON.parse(JSON.stringify(v1)));
+assertEqual(migrated.version, 2, "opening a v1 file migrates it to schema 2");
+assert(Array.isArray(migrated.lenses[0].facets[0].cells.d30.criteria), "migrated v1 criteria become an array");
+assert(migrated.lenses[0].facets[0].cells.d30.criteria.length >= 1, "migrated v1 criteria keep their text");
+var tooNew = JSON.parse(JSON.stringify(plan));
+tooNew.version = 99;
+assert(!api.validatePlan(tooNew).valid, "a future schema version is rejected");
+var stamped = JSON.parse(JSON.stringify(v1));
+api.stampPlanVersion(stamped);
+assertEqual(stamped.version, 2, "saves stamp schema version 2");
 
 console.log("Testing pressureTestCell...");
 function flagTypes(flags) {
@@ -442,6 +573,8 @@ var openConfirms = 0;
 var fakeOpen = {
   dirty: true,
   openMenuOpen: true,
+  templateMenuOpen: false,
+  closeMenus: Editor.prototype.closeMenus,
   root: {
     querySelector: function (sel) {
       if (sel === ".tsn-open-menu") return { hidden: false };
@@ -513,11 +646,33 @@ assertEqual(dated.startDate, "2024-07-01", "start date updated");
 assertEqual(dated.horizons[0].date, "2024-12-25", "manual date stays put");
 assertEqual(dated.horizons[1].date, "2024-08-30", "auto date moves");
 
+console.log("Testing hydratePlan of string cells...");
+var oldShape = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+oldShape.lenses[0].facets[0].cells.d30 = {
+  objective: "Know users",
+  criteria: "I can name them\nI can list segments",
+  tactics: "Ride calls\nRead reviews",
+  status: ""
+};
+api.hydratePlan(oldShape);
+assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["I can name them", "I can list segments"]), "hydrate splits string criteria");
+assertEqual(JSON.stringify(oldShape.lenses[0].facets[0].cells.d30.tactics), JSON.stringify(["Ride calls", "Read reviews"]), "hydrate splits string tactics");
+assertEqual(oldShape.version, 2, "hydrating string cells stamps schema version 2");
+
+var oldDraftStore = {};
+var oldDraft = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+oldDraft.lenses[0].facets[0].cells.d30.criteria = "I can name our top 10 customers.";
+oldDraft.lenses[0].facets[0].cells.d30.tactics = "Ride 5 support calls\nRead top reviews";
+oldDraftStore[api.STORE_KEYS[0]] = JSON.stringify(oldDraft);
+var loadedOld = api.readStoredDraft(memoryStore(oldDraftStore));
+assert(loadedOld && Array.isArray(loadedOld.lenses[0].facets[0].cells.d30.criteria), "localStorage string criteria hydrate to an array");
+assertEqual(loadedOld.lenses[0].facets[0].cells.d30.tactics.length, 2, "localStorage string tactics split");
+
 console.log("Testing exportMarkdown...");
 plan.lenses[0].facets[0].cells.d30 = {
   objective: "Understand the customer",
-  criteria: "I can name the top 5 customer segments",
-  tactics: "Review customer data\nTalk to support team",
+  criteria: ["I can name the top 5 customer segments"],
+  tactics: ["Review customer data", "Talk to support team"],
   status: ""
 };
 
@@ -538,8 +693,8 @@ var statusOnlyPlan = api.createNewPlan({
 });
 statusOnlyPlan.lenses[0].facets[0].cells.d30 = {
   objective: "",
-  criteria: "",
-  tactics: "",
+  criteria: [],
+  tactics: [],
   status: "Completed"
 };
 var statusMd = api.exportMarkdown(statusOnlyPlan);
@@ -568,6 +723,7 @@ var ws = wb.Sheets["30-60-90"];
 var data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 assert(data.length > 2, "has header rows and data");
 var header1 = data[0];
+assertEqual(header1[0], "kindel.30-60-90", "new export stamps the kind in A1");
 assert(header1[2].indexOf("30 Days") >= 0, "header has 30 Days");
 
 console.log("Testing XLSX round-trip...");
@@ -581,7 +737,11 @@ var importedLens = imported.lenses.find(function (l) { return l.id === "customer
 var importedFacet = importedLens.facets.find(function (f) { return f.name === origFacet.name; });
 assert(importedFacet, "imported has matching facet");
 assertEqual(importedFacet.cells.d30.objective, origFacet.cells.d30.objective, "objective preserved in round-trip");
-assertEqual(importedFacet.cells.d30.criteria, origFacet.cells.d30.criteria, "criteria preserved in round-trip");
+assertEqual(JSON.stringify(importedFacet.cells.d30.criteria), JSON.stringify(origFacet.cells.d30.criteria), "criteria preserved in round-trip");
+assertEqual(JSON.stringify(importedFacet.cells.d30.tactics), JSON.stringify(origFacet.cells.d30.tactics), "tactics preserved in round-trip");
+assertEqual(data[2][1], origFacet.name, "first slot row names the facet");
+assertEqual(data[3][1], "", "extra tactic rows leave the facet name blank");
+assert(String(data[3][4] || "").length > 0, "second tactic sits in its own spreadsheet cell");
 
 console.log("Testing historical XLSX import...");
 var historicalWb = XLSX.utils.book_new();
@@ -608,7 +768,7 @@ assert(customerLens.facets.length >= 2, "customer lens has facets");
 var endUsersFacet = customerLens.facets.find(function (f) { return f.name === "End users"; });
 assert(endUsersFacet, "has End users facet");
 assertEqual(endUsersFacet.cells.d30.objective, "Know users", "historical objective imported");
-assertEqual(endUsersFacet.cells.d30.criteria, "I can list users", "historical criteria imported");
+assertEqual(JSON.stringify(endUsersFacet.cells.d30.criteria), JSON.stringify(["I can list users"]), "historical criteria imported as an array");
 
 console.log("Testing historical import with 3-column format (no status)...");
 var historical3Col = [
@@ -627,6 +787,715 @@ var users3 = cust3.facets.find(function (f) { return f.name === "Users"; });
 assertEqual(users3.cells.d30.objective, "Know them", "3-col objective");
 assertEqual(users3.cells.d30.status, "", "3-col status is empty (no column)");
 
+console.log("Testing XLSX blank criterion slot round-trip...");
+assertEqual(JSON.stringify(api.compactItems(["c1", "", "c3"])), JSON.stringify(["c1", "", "c3"]), "compactItems keeps a middle blank");
+var gapped = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+gapped.lenses[0].facets[0].cells.d30.criteria = ["c1", "", "c3"];
+gapped.lenses[0].facets[0].cells.d30.tactics = ["t1", "t2", "t3"];
+var gappedIn = api.importXlsx(api.exportXlsx(gapped));
+var gappedFacet = gappedIn.lenses[0].facets.find(function (f) { return f.name === gapped.lenses[0].facets[0].name; });
+assert(gappedFacet, "gapped import has the facet");
+assertEqual(JSON.stringify(gappedFacet.cells.d30.criteria), JSON.stringify(["c1", "", "c3"]), "xlsx round-trip keeps a blank criterion slot");
+assertEqual(JSON.stringify(gappedFacet.cells.d30.tactics), JSON.stringify(["t1", "t2", "t3"]), "xlsx round-trip keeps aligned tactics");
+
+console.log("Testing XLSX multiline item round-trip...");
+var multiline = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+multiline.lenses[0].facets[0].cells.d30.criteria = ["a\nb", "c"];
+multiline.lenses[0].facets[0].cells.d30.tactics = ["t1"];
+var multiIn = api.importXlsx(api.exportXlsx(multiline));
+var multiFacet = multiIn.lenses[0].facets.find(function (f) { return f.name === multiline.lenses[0].facets[0].name; });
+assertEqual(JSON.stringify(multiFacet.cells.d30.criteria), JSON.stringify(["a\nb", "c"]), "xlsx round-trip keeps a newline inside one criterion");
+var singleNl = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+singleNl.lenses[0].facets[0].cells.d30.criteria = ["a\nb"];
+singleNl.lenses[0].facets[0].cells.d30.tactics = ["t1"];
+var singleNlIn = api.importXlsx(api.exportXlsx(singleNl));
+var singleNlFacet = singleNlIn.lenses[0].facets.find(function (f) { return f.name === singleNl.lenses[0].facets[0].name; });
+assertEqual(JSON.stringify(singleNlFacet.cells.d30.criteria), JSON.stringify(["a\nb"]), "xlsx round-trip keeps a lone multiline criterion without extra slot rows");
+var histJoined = [
+  ["", "", "30 Days", "", "", "60 Days", "", "", "90 Days", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables"],
+  ["Customer", "Users", "Know them", "I can a\nI can b", "Talk to them", "", "", "", "", "", ""]
+];
+var histJoinedWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histJoinedWb, XLSX.utils.aoa_to_sheet(histJoined), "Grid");
+var histJoinedPlan = api.importXlsx(histJoinedWb);
+var histUsers = histJoinedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(JSON.stringify(histUsers.cells.d30.criteria), JSON.stringify(["I can a", "I can b"]), "historical newline-joined criteria still split");
+var histDated = [
+  ["", "", "30 Days - Jul 1, 2024 - Land", "", "", "", "60 Days - Jul 31, 2024 - Understand Direction", "", "", "", "90 Days - Aug 30, 2024 - Set Challenge", "", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status"],
+  ["Customer", "Users", "Know them", "I can name users\nI can list segments", "Talk to them", "", "", "", "", "", "", "", "", ""]
+];
+var histDatedWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histDatedWb, XLSX.utils.aoa_to_sheet(histDated), "30-60-90");
+var histDatedPlan = api.importXlsx(histDatedWb);
+var histDatedUsers = histDatedPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(JSON.stringify(histDatedUsers.cells.d30.criteria), JSON.stringify(["I can name users", "I can list segments"]), "historical dated headers still split newline-joined criteria");
+var histUnlabeled = [
+  ["", "", "30 Days - Jul 1, 2024 - Land", "", "", "", "60 Days - Jul 31, 2024 - Understand Direction", "", "", "", "90 Days - Aug 30, 2024 - Set Challenge", "", "", ""],
+  ["", "", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status", "Key Objectives", "Evaluation Criteria", "Tactics/Deliverables", "Status"],
+  ["Customer", "Users", "Know them", "I can name users\nI can list segments", "Talk to them", "", "", "", "", "", "", "", "", ""],
+  ["", "", "", "I can still a\nI can still b", "", "", "", "", "", "", "", "", "", ""]
+];
+var histUnlabeledWb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(histUnlabeledWb, XLSX.utils.aoa_to_sheet(histUnlabeled), "30-60-90");
+var histUnlabeledPlan = api.importXlsx(histUnlabeledWb);
+var histUnlabeledUsers = histUnlabeledPlan.lenses.find(function (l) { return l.id === "customer"; }).facets.find(function (f) { return f.name === "Users"; });
+assertEqual(
+  JSON.stringify(histUnlabeledUsers.cells.d30.criteria),
+  JSON.stringify(["I can name users", "I can list segments", "I can still a", "I can still b"]),
+  "unmarked files still split newline-joined criteria even with an unlabeled populated row"
+);
+
+console.log("Testing editor focus, paste, and selection...");
+var editorPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+function makeEditor(srcPlan) {
+  var focused = [];
+  var firstCell = {
+    tabIndex: -1,
+    focus: function () { focused.push("cell"); }
+  };
+  var nodes = {};
+  function node(name) {
+    if (!nodes[name]) nodes[name] = { focus: function () { focused.push(name); } };
+    return nodes[name];
+  }
+  var editor = Object.create(global.ThirtySixtyNinetyEditor.prototype);
+  editor.focused = focused;
+  editor.firstCell = firstCell;
+  editor.root = {
+    innerHTML: "",
+    setAttribute: function () {},
+    closest: function () { return null; },
+    contains: function () { return true; },
+    insertAdjacentHTML: function (where, html) { editor.root.innerHTML += html; },
+    querySelector: function (sel) {
+      if (sel === '.tsn-cell[data-field]:not([data-field="pad"])') return firstCell;
+      if (sel.indexOf(".tsn-cell[data-lens=") === 0) return firstCell;
+      var action = sel.match(/^\[data-action="([^"]+)"\]$/);
+      if (action) return node(action[1]);
+      var hDate = sel.match(/^\.tsn-horizon-date-input\[data-horizon="([^"]+)"\]$/);
+      if (hDate) return node("tsn-horizon-date-input:" + hDate[1]);
+      if (sel.charAt(0) === ".") return node(sel.slice(1));
+      return null;
+    },
+    querySelectorAll: function () {
+      return { forEach: function () {} };
+    }
+  };
+  editor.bundle = api.getBundle();
+  editor.plan = JSON.parse(JSON.stringify(srcPlan));
+  editor.template = template;
+  editor.narrowHorizon = "d30";
+  editor.showStatus = false;
+  editor.peopleOpen = false;
+  editor.panel = null;
+  editor.collapsedLenses = {};
+  editor.sel = null;
+  editor.editing = false;
+  editor.extraFacet = null;
+  editor.suggestFor = null;
+  editor.dirty = false;
+  editor._pendingDirty = false;
+  editor._pendingValue = null;
+  editor._blurRefreshWaiting = false;
+  editor._renderGen = 0;
+  editor.touch = function () { editor.dirty = true; };
+  return editor;
+}
+
+function firstCoord(srcPlan, field, index) {
+  var lens = srcPlan.lenses[0];
+  var facet = lens.facets[0];
+  return { lensId: lens.id, facetId: facet.id, horizonId: "d30", field: field, index: index || 0 };
+}
+
+var loaded = makeEditor(editorPlan);
+loaded.render();
+assertEqual(loaded.focused.join(","), "", "a loaded plan does not steal focus on render");
+assertEqual(loaded.firstCell.tabIndex, 0, "the first cell is a tab stop when nothing is selected");
+assert(loaded.root.innerHTML.indexOf("tsn-cell-lead") >= 0, "first criterion and tactic slots are marked lead in the grid");
+
+var blankPlan = api.createNewPlan({ seatTitle: "Role", startDate: "2024-06-01" });
+blankPlan.lenses.forEach(function (lens) {
+  (lens.facets || []).forEach(function (facet) {
+    Object.keys(facet.cells || {}).forEach(function (hid) {
+      facet.cells[hid].objective = "";
+      facet.cells[hid].criteria = [];
+      facet.cells[hid].tactics = [];
+      facet.cells[hid].status = "";
+    });
+  });
+});
+var blankEd = makeEditor(blankPlan);
+blankEd.render();
+assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-crit tsn-cell-lead") >= 0, "empty first criterion keeps the lead class");
+assert(blankEd.root.innerHTML.indexOf("tsn-cell tsn-cell-tac tsn-cell-lead") >= 0, "empty first tactic keeps the lead class");
+blankPlan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "blank " + lens.id + " keeps Mechanisms");
+});
+
+var unfilled = api.createNewPlan({ startDate: "2024-06-01", fillExamples: false });
+unfilled.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "unfilled " + lens.id + " still has Mechanisms");
+});
+
+var missingMech = JSON.parse(JSON.stringify(plan));
+missingMech.lenses[0].facets = missingMech.lenses[0].facets.filter(function (f) { return f.name !== "Mechanisms"; });
+var startEd = makeEditor(missingMech);
+startEd.commitAllEdits = function () {};
+startEd.render = function () {};
+startEd.focusFirstCell = function () {};
+startEd.askConfirm = function (msg, label, fn) { fn(); };
+startEd.startBlank();
+assert(startEd.plan.startedBlank, "Start blank marks the plan startedBlank");
+startEd.plan.lenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "Start blank puts Mechanisms on " + lens.id);
+  lens.facets.forEach(function (facet) {
+    Object.keys(facet.cells || {}).forEach(function (hid) {
+      var cell = facet.cells[hid];
+      assert(!cell.objective && !(cell.criteria && cell.criteria.some(Boolean)) && !(cell.tactics && cell.tactics.some(Boolean)),
+        "Start blank clears " + lens.id + "/" + facet.id + "/" + hid);
+    });
+  });
+});
+assert(startEd.plan.lenses[0].facets.some(function (f) { return f.name === "End users"; }), "Start blank keeps End users");
+assertEqual(startEd.plan.template.version, template.version, "Start blank stamps the current template version");
+
+var useEd = makeEditor(JSON.parse(JSON.stringify(emptied)));
+useEd.plan.startedBlank = true;
+useEd.plan.person.name = "Ada";
+useEd.commitAllEdits = function () {};
+useEd.showUndo = function (msg) { useEd._undoMsg = msg; };
+useEd.askConfirm = function (msg, label, fn) {
+  useEd._confirmMsg = msg;
+  useEd._confirmLabel = label;
+  useEd._confirmFn = fn;
+};
+useEd.requestUseTemplate();
+assertEqual(useEd._confirmMsg, "Replace your plan's writing with the " + template.seatTitle + " example?", "Use template confirms first");
+assertEqual(useEd._confirmLabel, "Use template", "confirm button is Use template");
+assert(!api.planHasCellContent(useEd.plan), "cancel leaves the plan");
+useEd._confirmFn();
+assert(api.planHasCellContent(useEd.plan), "confirm applies the template");
+assertEqual(useEd.plan.person.name, "Ada", "applied plan keeps the hire");
+assertEqual(useEd.undo.type, "plan", "apply stores a plan undo");
+assert(useEd._undoMsg.indexOf("example") >= 0, "apply shows undo");
+useEd.applyUndo();
+assert(!api.planHasCellContent(useEd.plan), "undo restores the previous writing");
+assertEqual(useEd.plan.template.version, template.version, "undo of an empty plan stamps the current template version");
+assert(useEd.plan.startedBlank, "undo of an empty apply stays a Start blank");
+
+var toolEd = makeEditor(editorPlan);
+toolEd.bundle = bundle;
+toolEd.render();
+assert(toolEd.root.innerHTML.indexOf("Use template") >= 0, "toolbar has Use template");
+assert(toolEd.root.innerHTML.indexOf("use-template-menu") >= 0, "one template still uses the dropdown");
+assert(toolEd.root.innerHTML.indexOf("VP of Product") >= 0, "dropdown lists the VP of Product name");
+assert(toolEd.root.innerHTML.indexOf('aria-haspopup="menu"') >= 0, "dropdown exposes a menu");
+assert(toolEd.root.innerHTML.indexOf("tsn-template-offer") < 0, "current filled plan has no offer banner");
+
+api.setBundle(extraBundle);
+var menuEd = makeEditor(editorPlan);
+menuEd.bundle = extraBundle;
+menuEd.render();
+assert(menuEd.root.innerHTML.indexOf("use-template-menu") >= 0, "two templates stay a dropdown");
+assert(menuEd.root.innerHTML.indexOf('data-template="product-senior"') >= 0, "menu lists product-senior");
+assert(menuEd.root.innerHTML.indexOf("VP of Product") >= 0, "menu names product-senior VP of Product");
+assert(menuEd.root.innerHTML.indexOf('data-template="extra"') >= 0, "menu lists the extra template");
+assert(menuEd.root.innerHTML.indexOf(">Extra</button>") >= 0, "menu names the extra template Extra");
+api.setBundle(bundle);
+
+var dropFocus = [];
+var dropTrigger = {
+  focus: function () { dropFocus.push("trigger"); },
+  setAttribute: function () {}
+};
+var dropItem1 = { focus: function () { dropFocus.push("vp"); } };
+var dropItem2 = { focus: function () { dropFocus.push("extra"); } };
+var dropMenu = {
+  hidden: true,
+  querySelectorAll: function (sel) {
+    return sel.indexOf("menuitem") >= 0 ? [dropItem1, dropItem2] : [];
+  }
+};
+var dropWrap = {
+  querySelector: function (sel) {
+    if (sel.indexOf("use-template-menu") >= 0) return dropTrigger;
+    if (sel.indexOf("tsn-template-menu") >= 0) return dropMenu;
+    return null;
+  }
+};
+[dropTrigger, dropItem1, dropItem2].forEach(function (el) {
+  el.closest = function () { return dropWrap; };
+});
+var dropEd = makeEditor(editorPlan);
+dropEd.templateMenuOpen = false;
+dropEd.root.querySelector = function (sel) {
+  if (sel.indexOf("tsn-template-wrap") >= 0) return dropWrap;
+  if (sel.indexOf("tsn-template-menu") >= 0) return dropMenu;
+  if (sel.indexOf("use-template-menu") >= 0) return dropTrigger;
+  if (sel.indexOf(".tsn-open-menu:not") >= 0) return null;
+  return dropEd.firstCell;
+};
+dropEd.onTemplateMenuKeydown({
+  key: "ArrowDown",
+  target: dropTrigger,
+  preventDefault: function () { dropEd._arrow = true; }
+});
+assert(dropEd.templateMenuOpen, "ArrowDown opens the template dropdown");
+assertEqual(dropFocus.join(","), "vp", "ArrowDown focuses the first template");
+dropEd.onTemplateMenuKeydown({
+  key: "ArrowDown",
+  target: dropItem1,
+  preventDefault: function () {}
+});
+assertEqual(dropFocus.join(","), "vp,extra", "ArrowDown moves to the next template");
+dropEd.onTemplateMenuKeydown({
+  key: "Escape",
+  target: dropItem2,
+  preventDefault: function () { dropEd._esc = true; }
+});
+assert(!dropEd.templateMenuOpen, "Escape closes the template dropdown");
+assertEqual(dropFocus[dropFocus.length - 1], "trigger", "Escape returns to the Use template control");
+
+var offerEd = makeEditor(staleFilled);
+offerEd.templateOffer = true;
+offerEd.render();
+assert(offerEd.root.innerHTML.indexOf("tsn-template-offer") >= 0, "older filled draft shows an offer");
+
+var keep = makeEditor(editorPlan);
+keep.sel = firstCoord(keep.plan, "objective", 0);
+keep.render({ keepFocus: false });
+assertEqual(keep.focused.join(","), "", "keepFocus false does not yank focus back to the grid");
+keep.render({ keepFocus: true });
+assertEqual(keep.focused.join(","), "cell", "keepFocus true restores grid focus");
+
+var restore = makeEditor(editorPlan);
+restore.focusPointerRestore({ action: "save" });
+assertEqual(restore.focused.join(","), "save", "blur restore focuses the Save control");
+restore.focusPointerRestore({ className: "tsn-person-name" });
+assertEqual(restore.focused.join(","), "save,tsn-person-name", "blur restore focuses the People hire field");
+restore.focusPointerRestore({ className: "tsn-seat-title" });
+assertEqual(restore.focused.join(","), "save,tsn-person-name,tsn-seat-title", "blur restore focuses the seat title");
+restore.focusPointerRestore({ className: "tsn-facet-name", lensId: "customer", facetId: "end-users" });
+assert(restore.focused[restore.focused.length - 1].indexOf("tsn-facet-name") >= 0, "blur restore focuses the clicked facet name");
+restore.focusPointerRestore({ className: "tsn-start-date-input" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-start-date-input", "blur restore focuses the start date");
+restore.focusPointerRestore({ className: "tsn-horizon-date-input", horizonId: "d30" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-horizon-date-input:d30", "blur restore focuses the clicked horizon date");
+restore.focusPointerRestore({ className: "tsn-manager-name" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-manager-name", "blur restore focuses the People manager field");
+
+function fakeField(className, attrs) {
+  attrs = attrs || {};
+  return {
+    classList: { contains: function (n) { return n === className; } },
+    getAttribute: function (k) { return attrs[k]; },
+    closest: function (sel) {
+      if (sel === ".tsn-cell" || sel === "[data-action]") return null;
+      if (sel.charAt(0) === "." && sel.slice(1) === className) return this;
+      return null;
+    },
+    querySelector: function () { return null; }
+  };
+}
+var mapEd = makeEditor(editorPlan);
+var startMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-start-date-input"), clientX: 4, clientY: 8 });
+assertEqual(startMap && startMap.className, "tsn-start-date-input", "mousedown on start date records a restore");
+var horizonMap = mapEd.pointerRestoreFromEvent({
+  target: fakeField("tsn-horizon-date-input", { "data-horizon": "d60" }),
+  clientX: 1,
+  clientY: 2
+});
+assertEqual(horizonMap && horizonMap.horizonId, "d60", "mousedown on a horizon date records that horizon");
+var hireMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-person-name"), clientX: 3, clientY: 6 });
+assertEqual(hireMap && hireMap.className, "tsn-person-name", "mousedown on hire name records a restore");
+var mgrMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-manager-name"), clientX: 5, clientY: 7 });
+assertEqual(mgrMap && mgrMap.className, "tsn-manager-name", "mousedown on manager name records a restore");
+
+var hireCaret = { range: null, focus: function () { restore.focused.push("hire-caret"); } };
+hireCaret.setSelectionRange = function (a, b) { hireCaret.range = a + ":" + b; };
+var caretEd = makeEditor(editorPlan);
+caretEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-person-name") return hireCaret;
+  return null;
+};
+caretEd.focusPointerRestore({ className: "tsn-person-name", start: 2, end: 2 });
+assertEqual(hireCaret.range, "2:2", "blur restore puts the caret back in the hire name");
+caretEd._pointerRestore = { className: "tsn-person-name" };
+caretEd.notePointerRestoreCaret({ target: { selectionStart: 4, selectionEnd: 4 } });
+assertEqual(caretEd._pointerRestore.start, 4, "mouseup records the caret in a name or date input");
+
+var origMatchMedia = window.matchMedia;
+window.matchMedia = function () { return { matches: true }; };
+var narrowTab = makeEditor(editorPlan);
+narrowTab.sel = firstCoord(narrowTab.plan, "tactics", 0);
+narrowTab._moved = null;
+narrowTab.finishEditAndMove = function (dir) { narrowTab._moved = dir; };
+narrowTab.onEditKeydown = function () { narrowTab._editKeys = (narrowTab._editKeys || 0) + 1; };
+narrowTab.root.querySelector = function (sel) {
+  if (sel === ".tsn-confirm") return null;
+  return narrowTab.firstCell;
+};
+narrowTab.onKeydown({
+  key: "Tab",
+  shiftKey: false,
+  target: {
+    classList: { contains: function (name) { return name === "tsn-cell-input"; } },
+    closest: function () { return null; }
+  },
+  preventDefault: function () { narrowTab._prevented = true; }
+});
+assert(!narrowTab._moved, "narrow Tab does not select a hidden horizon");
+assert(!narrowTab._editKeys, "narrow Tab skips the desktop textarea handler");
+window.matchMedia = origMatchMedia;
+
+var copyEd = makeEditor(editorPlan);
+copyEd.sel = firstCoord(copyEd.plan, "objective", 0);
+var clipText = "";
+copyEd.copySelected({
+  clipboardData: { setData: function (type, value) { if (type === "text/plain") clipText = value; } },
+  preventDefault: function () { copyEd._copyPrevented = true; }
+});
+assertEqual(clipText, copyEd.plan.lenses[0].facets[0].cells.d30.objective, "copy writes clipboardData");
+assert(copyEd._copyPrevented, "copy with clipboardData prevents the native empty copy");
+var execLog = [];
+var priorDoc = global.document;
+var navObj = typeof navigator !== "undefined" ? navigator : null;
+var priorClip = navObj ? Object.getOwnPropertyDescriptor(navObj, "clipboard") : null;
+if (navObj) {
+  try {
+    Object.defineProperty(navObj, "clipboard", { configurable: true, writable: true, value: undefined });
+  } catch (err) {}
+}
+global.document = {
+  createElement: function () {
+    return {
+      value: "",
+      style: {},
+      setAttribute: function () {},
+      select: function () { execLog.push("select"); }
+    };
+  },
+  body: {
+    appendChild: function () { execLog.push("append"); },
+    removeChild: function () { execLog.push("remove"); }
+  },
+  execCommand: function (cmd) { execLog.push(cmd); return true; }
+};
+assert(copyEd.copySelected(), "copy without Clipboard API uses the execCommand fallback");
+assert(execLog.indexOf("copy") >= 0, "fallback calls execCommand copy");
+global.document = priorDoc;
+if (navObj && priorClip) Object.defineProperty(navObj, "clipboard", priorClip);
+
+var jsonEd = makeEditor(editorPlan);
+jsonEd.bundle = extraBundle;
+jsonEd.template = extraBundle.templates.extra;
+var loadedVp = JSON.parse(JSON.stringify(editorPlan));
+loadedVp.template = { id: "product-senior", version: 2 };
+jsonEd.adoptPlan(loadedVp);
+assertEqual(jsonEd.template.id, "product-senior", "opening JSON adopts the plan's template");
+jsonEd.template = extraBundle.templates.extra;
+var unknownPlan = JSON.parse(JSON.stringify(editorPlan));
+unknownPlan.template = { id: "missing-template", version: 1 };
+jsonEd.adoptPlan(unknownPlan);
+assertEqual(jsonEd.template.id, "product-senior", "an unknown template id falls back to the default, not the previous extra");
+
+var pasteEd = makeEditor(editorPlan);
+pasteEd.render = function () {};
+pasteEd.focusSelected = function () {};
+pasteEd.sel = firstCoord(pasteEd.plan, "objective", 0);
+pasteEd.pasteIntoSel("para one\n\npara two");
+assertEqual(pasteEd.plan.lenses[0].facets[0].cells.d30.objective, "para one\n\npara two", "objective paste keeps both paragraphs");
+pasteEd.sel = firstCoord(pasteEd.plan, "status", 0);
+pasteEd.showStatus = true;
+pasteEd.pasteIntoSel("status a\nstatus b");
+assertEqual(pasteEd.plan.lenses[0].facets[0].cells.d30.status, "status a\nstatus b", "status paste keeps both paragraphs");
+pasteEd.plan.lenses[0].facets[0].cells.d30.criteria = [];
+pasteEd.sel = firstCoord(pasteEd.plan, "criteria", 0);
+pasteEd.pasteIntoSel("c1\nc2");
+assertEqual(JSON.stringify(pasteEd.plan.lenses[0].facets[0].cells.d30.criteria), JSON.stringify(["c1", "c2"]), "criteria paste still splits into cells");
+
+var pasteCalls = 0;
+var pastePrevented = 0;
+function pasteEvent(field, text) {
+  return {
+    target: {
+      classList: { contains: function (name) { return name === "tsn-cell-input"; } },
+      closest: function () { return { getAttribute: function () { return field; } }; }
+    },
+    clipboardData: { getData: function () { return text; } },
+    preventDefault: function () { pastePrevented += 1; }
+  };
+}
+var pasteHost = {
+  sel: { field: "objective" },
+  commitEdit: function () {},
+  pasteIntoSel: function () { pasteCalls += 1; }
+};
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("objective", "keep\nme"));
+assertEqual(pastePrevented, 0, "objective textarea paste does not preventDefault");
+assertEqual(pasteCalls, 0, "objective textarea paste does not overwrite the cell");
+pasteHost.sel = { field: "status" };
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("status", "a\nb"));
+assertEqual(pastePrevented, 0, "status textarea paste stays native");
+pasteHost.sel = { field: "criteria" };
+Editor.prototype.onPaste.call(pasteHost, pasteEvent("criteria", "c1\nc2"));
+assertEqual(pastePrevented, 1, "criteria multiline paste is intercepted");
+assertEqual(pasteCalls, 1, "criteria multiline paste splits into cells");
+
+var clampEd = makeEditor(editorPlan);
+var clampFacet = clampEd.plan.lenses[0].facets[0];
+Object.keys(clampFacet.cells).forEach(function (hid) {
+  clampFacet.cells[hid].criteria = hid === "d30" ? ["only"] : [];
+  clampFacet.cells[hid].tactics = hid === "d30" ? ["t"] : [];
+});
+clampEd.sel = firstCoord(clampEd.plan, "criteria", 2);
+clampEd.clampSel();
+assertEqual(clampEd.sel.index, 0, "clampSel moves onto a cell that still exists");
+
+var staleStatus = makeEditor(editorPlan);
+staleStatus.showStatus = false;
+staleStatus.sel = firstCoord(staleStatus.plan, "status", 0);
+staleStatus.render();
+assert(staleStatus.sel && staleStatus.sel.field !== "status", "hiding Status remaps sel off the missing cell");
+assert(staleStatus.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after Status hides");
+
+var staleLens = makeEditor(editorPlan);
+staleLens.collapsedLenses[staleLens.plan.lenses[0].id] = true;
+staleLens.sel = firstCoord(staleLens.plan, "objective", 0);
+staleLens.render();
+assert(staleLens.sel && staleLens.sel.lensId !== staleLens.plan.lenses[0].id, "collapsing a lens remaps sel onto a visible cell");
+assert(staleLens.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after a lens collapses");
+
+var staleFacet = makeEditor(editorPlan);
+staleFacet.sel = { lensId: "customer", facetId: "gone-facet", horizonId: "d30", field: "objective", index: 0 };
+staleFacet.render();
+assert(staleFacet.sel && staleFacet.sel.facetId !== "gone-facet", "a missing facet remaps sel");
+assert(staleFacet.root.innerHTML.indexOf('tabindex="0"') >= 0, "a remaining cell is a tab stop after the selected facet is gone");
+
+var flagFocus = [];
+var moveFocusBtn = { focus: function () { flagFocus.push("move"); } };
+var rewriteFocusBtn = { focus: function () { flagFocus.push("rewrite"); } };
+var keepFocusBtn = { focus: function () { flagFocus.push("keep"); } };
+var flagButtons = [moveFocusBtn, rewriteFocusBtn, keepFocusBtn];
+var flagCell = {
+  querySelectorAll: function (sel) {
+    return sel.indexOf("tsn-flag-actions") >= 0 ? flagButtons : [];
+  }
+};
+var flagEd = makeEditor(editorPlan);
+flagEd.sel = firstCoord(flagEd.plan, "criteria", 0);
+flagEd.markSelected = function () {};
+flagEd.root.querySelector = function (sel) {
+  if (sel.indexOf("data-field=\"criteria\"") >= 0) return flagCell;
+  if (sel.indexOf(".tsn-cell[data-lens=") === 0) return flagCell;
+  return flagEd.firstCell;
+};
+flagEd.focusSelected = function () { flagFocus.push("cell"); };
+var tabPrevented = 0;
+flagEd.onGridKeydown({ key: "Tab", shiftKey: false, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagFocus.join(","), "move", "Tab from an amber criterion focuses Move to Tactics");
+assertEqual(tabPrevented, 1, "Tab into redirect actions is handled");
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: false, target: moveFocusBtn, preventDefault: function () {} });
+assertEqual(flagFocus.join(","), "move", "Tab inside the card leaves native order until the last button");
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: false, target: keepFocusBtn, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagEd.sel.field, "tactics", "Tab past Keep moves to the next grid cell");
+flagFocus = [];
+flagEd.sel = firstCoord(flagEd.plan, "criteria", 0);
+flagEd.onFlagKeydown({ key: "Tab", shiftKey: true, target: moveFocusBtn, preventDefault: function () { tabPrevented += 1; } });
+assertEqual(flagFocus.join(","), "cell", "Shift+Tab from Move returns to the criterion");
+flagFocus = [];
+flagEd.onFlagKeydown({ key: "Escape", target: rewriteFocusBtn, preventDefault: function () {} });
+assertEqual(flagFocus.join(","), "cell", "Escape from a redirect action returns to the grid");
+
+var moveEd = makeEditor(editorPlan);
+var movedCell = moveEd.plan.lenses[0].facets[0].cells.d30;
+movedCell.criteria = ["Meet the team"];
+movedCell.tactics = [];
+var renderedMove = false;
+moveEd.render = function () { renderedMove = true; };
+moveEd.focusSelected = function () {};
+var flagCard = { getAttribute: function () { return "0"; } };
+var cellEl = {
+  closest: function (sel) { return sel === ".tsn-cell" ? cellEl : null; },
+  getAttribute: function (name) {
+    var map = {
+      "data-lens": moveEd.plan.lenses[0].id,
+      "data-facet": moveEd.plan.lenses[0].facets[0].id,
+      "data-horizon": "d30",
+      "data-index": "0"
+    };
+    return map[name];
+  }
+};
+var moveBtn = {
+  closest: function (sel) {
+    if (sel === ".tsn-flag-card") return flagCard;
+    if (sel === ".tsn-cell") return cellEl;
+    return null;
+  }
+};
+moveEd.redirectLine(moveBtn, "move");
+assert(renderedMove, "Move to Tactics renders when the cell is not being edited");
+assertEqual(JSON.stringify(movedCell.criteria), JSON.stringify([]), "Move to Tactics clears the criterion");
+assertEqual(JSON.stringify(movedCell.tactics), JSON.stringify(["Meet the team"]), "Move to Tactics appends the tactic");
+
+console.log("Testing pending edits, dialog blur, and redirect commit...");
+var draftStore = {};
+var prevStorage = global.localStorage;
+global.localStorage = {
+  setItem: function (k, v) { draftStore[k] = v; },
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(draftStore, k) ? draftStore[k] : null; },
+  removeItem: function (k) { delete draftStore[k]; }
+};
+var pendingEd = makeEditor(editorPlan);
+var originalObj = pendingEd.plan.lenses[0].facets[0].cells.d30.objective;
+pendingEd.sel = firstCoord(pendingEd.plan, "objective", 0);
+pendingEd.editing = true;
+pendingEd.editOriginal = originalObj;
+pendingEd.render = function () {};
+pendingEd.focusSelected = function () {};
+pendingEd.notePendingEdit("typed but not committed");
+assert(pendingEd._pendingDirty, "typing a cell marks pending dirty for beforeunload");
+assert(draftStore[api.STORE_KEYS[0]], "pending edit writes a draft snapshot");
+var pendingSnap = JSON.parse(draftStore[api.STORE_KEYS[0]]);
+assertEqual(pendingSnap.lenses[0].facets[0].cells.d30.objective, "typed but not committed", "draft snapshot has the typed text");
+assertEqual(pendingEd.plan.lenses[0].facets[0].cells.d30.objective, originalObj, "live plan stays unchanged until commit");
+pendingEd.cancelEdit();
+assertEqual(pendingEd._pendingDirty, false, "Esc clears pending dirty");
+assertEqual(pendingEd.editing, false, "Esc ends the edit");
+assertEqual(pendingEd.plan.lenses[0].facets[0].cells.d30.objective, originalObj, "Esc does not commit typed text");
+global.localStorage = prevStorage;
+
+var queued = [];
+var origTimeout = global.setTimeout;
+global.setTimeout = function (fn) { queued.push(fn); return 0; };
+global.document = global.document || { activeElement: null };
+var dlgEd = makeEditor(editorPlan);
+var confirmOpen = true;
+var origDlgQs = dlgEd.root.querySelector.bind(dlgEd.root);
+dlgEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-confirm") return confirmOpen ? { remove: function () { confirmOpen = false; } } : null;
+  if (sel === ".tsn-cell-input") return { value: "typed in cell" };
+  return origDlgQs(sel);
+};
+var dlgRendered = 0;
+dlgEd.render = function () { dlgRendered += 1; };
+dlgEd.focusSelected = function () {};
+dlgEd.sel = firstCoord(dlgEd.plan, "objective", 0);
+dlgEd.editing = true;
+dlgEd.editOriginal = dlgEd.plan.lenses[0].facets[0].cells.d30.objective;
+dlgEd.onFocusOut({
+  target: {
+    classList: { contains: function (c) { return c === "tsn-cell-input"; } },
+    closest: function () { return { contains: function () { return false; } }; }
+  },
+  relatedTarget: null
+});
+assertEqual(dlgEd.editing, false, "blur commits before the deferred render");
+assertEqual(dlgEd.plan.lenses[0].facets[0].cells.d30.objective, "typed in cell", "blur writes the typed value");
+queued.forEach(function (fn) { fn(); });
+assertEqual(dlgRendered, 0, "blur does not render while a confirm dialog is open");
+assert(dlgEd._blurRefreshWaiting, "refresh waits until the dialog closes");
+dlgEd.closeModal();
+assertEqual(confirmOpen, false, "closeModal removes the dialog");
+assertEqual(dlgRendered, 1, "closing the dialog runs the postponed refresh");
+global.setTimeout = origTimeout;
+
+var editMove = makeEditor(editorPlan);
+var editCell = editMove.plan.lenses[0].facets[0].cells.d30;
+editCell.criteria = ["Meet the team"];
+editCell.tactics = [];
+editMove.sel = firstCoord(editMove.plan, "criteria", 0);
+editMove.editing = true;
+editMove.editOriginal = "Meet the team";
+var origEditQs = editMove.root.querySelector.bind(editMove.root);
+editMove.root.querySelector = function (sel) {
+  if (sel === ".tsn-cell-input") return { value: "Meet the whole team" };
+  return origEditQs(sel);
+};
+editMove.render = function () {};
+editMove.focusSelected = function () {};
+var editCard = { getAttribute: function () { return "0"; } };
+var editCellEl = {
+  closest: function (sel) { return sel === ".tsn-cell" ? editCellEl : null; },
+  getAttribute: function (name) {
+    var map = {
+      "data-lens": editMove.plan.lenses[0].id,
+      "data-facet": editMove.plan.lenses[0].facets[0].id,
+      "data-horizon": "d30",
+      "data-index": "0"
+    };
+    return map[name];
+  }
+};
+var editBtn = {
+  closest: function (sel) {
+    if (sel === ".tsn-flag-card") return editCard;
+    if (sel === ".tsn-cell") return editCellEl;
+    return null;
+  }
+};
+editMove.redirectLine(editBtn, "move");
+assertEqual(JSON.stringify(editCell.criteria), JSON.stringify([]), "editing Move to Tactics commits then clears the criterion");
+assertEqual(JSON.stringify(editCell.tactics), JSON.stringify(["Meet the whole team"]), "Move to Tactics uses the typed criterion, not the stale cell");
+
+console.log("Testing type-to-replace pending edit and empty Backspace save...");
+var replaceStore = {};
+global.localStorage = {
+  setItem: function (k, v) { replaceStore[k] = v; },
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(replaceStore, k) ? replaceStore[k] : null; },
+  removeItem: function (k) { delete replaceStore[k]; }
+};
+var replaceEd = makeEditor(editorPlan);
+replaceEd.sel = firstCoord(replaceEd.plan, "objective", 0);
+replaceEd.render = function () {};
+replaceEd.focusSelected = function () {};
+var replaceInput = {
+  value: replaceEd.plan.lenses[0].facets[0].cells.d30.objective,
+  focus: function () {},
+  setSelectionRange: function () {}
+};
+var origReplaceQs = replaceEd.root.querySelector.bind(replaceEd.root);
+replaceEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-cell-input") return replaceInput;
+  return origReplaceQs(sel);
+};
+replaceEd.startEdit(replaceEd.sel, { replace: "x" });
+assertEqual(replaceInput.value, "x", "type-to-replace puts the typed character in the textarea");
+assert(replaceEd._pendingDirty, "type-to-replace marks pending dirty without an input event");
+assertEqual(replaceEd._pendingValue, "x", "type-to-replace stores the replacement as the pending value");
+var replaceSnap = JSON.parse(replaceStore[api.STORE_KEYS[0]]);
+assertEqual(replaceSnap.lenses[0].facets[0].cells.d30.objective, "x", "type-to-replace writes the character to the draft");
+assertEqual(replaceEd.plan.lenses[0].facets[0].cells.d30.objective, editorPlan.lenses[0].facets[0].cells.d30.objective, "type-to-replace does not commit until blur or save");
+
+var bsEd = makeEditor(editorPlan);
+var bsCell = bsEd.plan.lenses[0].facets[0].cells.d30;
+bsCell.criteria = ["Meet the team"];
+bsEd.sel = firstCoord(bsEd.plan, "criteria", 0);
+bsEd.editing = true;
+bsEd.editOriginal = "Meet the team";
+bsEd._pendingDirty = true;
+bsEd._pendingValue = "";
+bsEd.render = function () {};
+bsEd.focusSelected = function () {};
+var bsPrevented = false;
+bsEd.onEditKeydown({
+  key: "Backspace",
+  preventDefault: function () { bsPrevented = true; },
+  target: { value: "" }
+});
+assert(bsPrevented, "Backspace on an empty criterion textarea is handled");
+assertEqual(bsEd.editing, false, "empty Backspace ends the edit");
+assertEqual(bsEd._pendingDirty, false, "empty Backspace clears pending dirty");
+assertEqual(bsEd._pendingValue, null, "empty Backspace clears pending value");
+bsEd.commitAllEdits();
+bsEd.setDirty(false);
+assertEqual(bsEd._pendingDirty, false, "save after empty Backspace does not leave the unload warning armed");
+global.localStorage = prevStorage;
+
 console.log("Testing computeHorizons...");
 var horizons = api.computeHorizons("2024-03-01", false, template);
 assertEqual(horizons.length, 3, "3 horizons without 180");
@@ -643,6 +1512,9 @@ var productLenses = api.buildLenses(template, horizons);
 assertEqual(productLenses.length, 4, "template has 4 lenses");
 assert(productLenses[0].facets.some(function (f) { return f.name === "End users"; }), "template has End users");
 assert(!productLenses[0].facets.some(function (f) { return f.name === "End-customer"; }), "blank plan does not load the v1 family list");
+productLenses.forEach(function (lens) {
+  assert(lens.facets.some(function (f) { return f.name === "Mechanisms"; }), "buildLenses puts Mechanisms on " + lens.id);
+});
 
 var filled = api.pressureTestPlan(flaggedPlan);
 assert(filled.length >= 1, "pressureTestPlan feeds Plan check");

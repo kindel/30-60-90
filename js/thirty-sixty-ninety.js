@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  var VERSION = 1;
+  var VERSION = 2;
   var KIND = "kindel.30-60-90";
   var STORE_KEY = "kindel.30-60-90.draft.v2";
   var STORE_KEYS = ["kindel.30-60-90.draft.v2", "kindel.30-60-90.draft.v1"];
@@ -84,6 +84,108 @@
       .filter(function (l) { return l.length > 0; });
   }
 
+  function itemList(value) {
+    if (Array.isArray(value)) {
+      return value.map(function (v) {
+        return String(v == null ? "" : v).replace(/\u00a0/g, " ");
+      });
+    }
+    return splitLines(value);
+  }
+
+  function compactItems(value) {
+    var items = itemList(value).map(function (v) { return String(v).trim(); });
+    while (items.length && !items[items.length - 1]) items.pop();
+    return items;
+  }
+
+  function filledItems(value) {
+    return compactItems(value).filter(function (l) { return l.length > 0; });
+  }
+
+  function setItem(cell, field, index, text) {
+    if (!cell) return;
+    var items = compactItems(cell[field]);
+    var i = index == null ? 0 : index;
+    while (items.length <= i) items.push("");
+    items[i] = String(text == null ? "" : text).replace(/\u00a0/g, " ").trim();
+    cell[field] = compactItems(items);
+  }
+
+  function removeItem(cell, field, index) {
+    if (!cell) return false;
+    var items = compactItems(cell[field]);
+    var i = index == null ? 0 : index;
+    if (i < 0 || i >= items.length) return false;
+    items.splice(i, 1);
+    cell[field] = compactItems(items);
+    return true;
+  }
+
+  function cellItemText(cell, field, index) {
+    if (!cell) return "";
+    if (field === "objective" || field === "status") {
+      return String(cell[field] || "").replace(/\u00a0/g, " ");
+    }
+    var items = compactItems(cell[field]);
+    return items[index] || "";
+  }
+
+  function selFromEl(el) {
+    if (!el) return null;
+    return {
+      lensId: el.getAttribute("data-lens"),
+      facetId: el.getAttribute("data-facet"),
+      horizonId: el.getAttribute("data-horizon"),
+      field: el.getAttribute("data-field"),
+      index: parseInt(el.getAttribute("data-index") || "0", 10) || 0
+    };
+  }
+
+  function sameSel(a, b) {
+    return !!(a && b &&
+      a.lensId === b.lensId &&
+      a.facetId === b.facetId &&
+      a.horizonId === b.horizonId &&
+      a.field === b.field &&
+      (a.index || 0) === (b.index || 0));
+  }
+
+  function isTypingKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (e.key == null || e.key.length !== 1) return false;
+    return true;
+  }
+
+  function hydrateCell(cell) {
+    if (!cell || typeof cell !== "object") return cell;
+    cell.objective = cell.objective == null ? "" : String(cell.objective);
+    cell.status = cell.status == null ? "" : String(cell.status);
+    cell.criteria = compactItems(cell.criteria);
+    cell.tactics = compactItems(cell.tactics);
+    hydrateCellDismissals(cell);
+    pruneDismissals(cell);
+    return cell;
+  }
+
+  function stampPlanVersion(plan) {
+    if (plan) plan.version = VERSION;
+    return plan;
+  }
+
+  function hydratePlan(plan) {
+    if (!plan || !plan.lenses) return plan;
+    plan.lenses.forEach(function (lens) {
+      (lens.facets || []).forEach(function (facet) {
+        Object.keys(facet.cells || {}).forEach(function (hid) {
+          hydrateCell(facet.cells[hid]);
+        });
+      });
+    });
+    stampPlanVersion(plan);
+    return plan;
+  }
+
   function modalFocusables(root) {
     if (!root || typeof root.querySelectorAll !== "function") return [];
     var nodes = root.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])");
@@ -130,6 +232,80 @@
     if (!bundle || !bundle.manifest) return null;
     var id = bundle.manifest.default;
     return (bundle.templates && bundle.templates[id]) || null;
+  }
+
+  function listTemplates(bundle) {
+    bundle = bundle || getBundle();
+    var list = bundle && bundle.manifest && bundle.manifest.templates;
+    return Array.isArray(list) ? list : [];
+  }
+
+  function getTemplateById(bundle, id) {
+    bundle = bundle || getBundle();
+    if (!id || !bundle || !bundle.templates) return null;
+    return bundle.templates[id] || null;
+  }
+
+  function resolvePlanTemplate(plan, bundle) {
+    var stamped = plan && plan.template && plan.template.id;
+    return getTemplateById(bundle, stamped) || getDefaultTemplate(bundle);
+  }
+
+  function clonePlan(plan) {
+    return JSON.parse(JSON.stringify(plan));
+  }
+
+  function templateExampleName(template) {
+    if (!template) return "example";
+    return template.seatTitle || template.label || "example";
+  }
+
+  function templateDisplayName(bundle, entry) {
+    var id = entry && typeof entry === "object" ? entry.id : entry;
+    var template = getTemplateById(bundle, id);
+    var fromTemplate = template && (template.seatTitle || template.label);
+    if (fromTemplate) return fromTemplate;
+    return (entry && entry.label) || id || "example";
+  }
+
+  function templateApplyConfirmMessage(template) {
+    return "Replace your plan's writing with the " + templateExampleName(template) + " example?";
+  }
+
+  function planTemplateVersion(plan) {
+    if (!plan || !plan.template) return 0;
+    var v = Number(plan.template.version);
+    return isFinite(v) ? v : 0;
+  }
+
+  function shouldAutoApplyTemplate(plan, template) {
+    if (!plan || !template) return false;
+    if (planHasCellContent(plan)) return false;
+    if (!plan.template) return true;
+    if (plan.template.id !== template.id) return true;
+    return planTemplateVersion(plan) < Number(template.version || 0);
+  }
+
+  function shouldOfferTemplateUpdate(plan, template) {
+    if (!plan || !template || !planHasCellContent(plan)) return false;
+    if (!plan.template || plan.template.id !== template.id) return false;
+    return planTemplateVersion(plan) < Number(template.version || 0);
+  }
+
+  function applyTemplateToPlan(plan, template) {
+    if (!plan || !template) return plan;
+    var horizons = plan.horizons && plan.horizons.length
+      ? plan.horizons
+      : computeHorizons(plan.startDate, plan.include180, template);
+    plan.horizons = horizons;
+    plan.lenses = buildLenses(template, horizons, { fillExamples: true });
+    plan.template = { id: template.id, version: template.version };
+    if (!plan.seat) plan.seat = {};
+    plan.seat.title = template.seatTitle || plan.seat.title || "";
+    plan.seat.family = familyFromTemplate(template);
+    delete plan.startedBlank;
+    hydratePlanDismissals(plan);
+    return plan;
   }
 
   function familyFromTemplate(template) {
@@ -280,7 +456,7 @@
   }
 
   function emptyCell() {
-    return { objective: "", criteria: "", tactics: "", status: "" };
+    return { objective: "", criteria: [], tactics: [], status: "" };
   }
 
   function emptyCells(horizons) {
@@ -295,8 +471,8 @@
     var ex = example || {};
     return {
       objective: ex.objective || "",
-      criteria: ex.criteria || "",
-      tactics: ex.tactics || "",
+      criteria: compactItems(ex.criteria),
+      tactics: compactItems(ex.tactics),
       status: ex.status || ""
     };
   }
@@ -308,6 +484,32 @@
       cells[h.id] = fillExamples ? cellFromExample(src && src.example) : emptyCell();
     });
     return cells;
+  }
+
+  function isMechanismsFacet(facet) {
+    return !!(facet && (facet.id === "mechanisms" || String(facet.name || "").toLowerCase() === "mechanisms"));
+  }
+
+  function mechanismsTemplateFacet(template, lensId) {
+    var src = templateLens(template, lensId);
+    var facets = (src && src.facets) || [];
+    var i;
+    for (i = 0; i < facets.length; i++) {
+      if (isMechanismsFacet(facets[i])) return facets[i];
+    }
+    return { id: "mechanisms", name: "Mechanisms", cells: {} };
+  }
+
+  function ensureMechanismsFacet(lens, horizons, template, fillExamples) {
+    if (!lens) return;
+    if (!lens.facets) lens.facets = [];
+    if (lens.facets.some(isMechanismsFacet)) return;
+    var src = mechanismsTemplateFacet(template, lens.id);
+    lens.facets.push({
+      id: src.id || "mechanisms",
+      name: "Mechanisms",
+      cells: cellsFromTemplateFacet(src, horizons, !!fillExamples)
+    });
   }
 
   function buildLenses(template, horizons, opts) {
@@ -325,11 +527,13 @@
           cells: cellsFromTemplateFacet(f, horizons, fillExamples)
         };
       });
-      return {
+      var lens = {
         id: lensId,
         name: src.name || "",
         facets: facets
       };
+      ensureMechanismsFacet(lens, horizons, template, fillExamples);
+      return lens;
     });
   }
 
@@ -376,7 +580,7 @@
           storageRemove(storage, STORE_KEYS[i]);
           continue;
         }
-        return hydratePlanDismissals(plan);
+        return hydratePlan(plan);
       } catch (e) {}
     }
     return null;
@@ -475,7 +679,7 @@
     if (!cell) return;
     var texts = cell.dismissedText;
     if (!texts || !texts.length) return;
-    var crits = splitLines(cell.criteria);
+    var crits = compactItems(cell.criteria);
     var keptText = [];
     var keptIdx = [];
     texts.forEach(function (t) {
@@ -500,7 +704,7 @@
 
   function hydrateCellDismissals(cell) {
     if (!cell || (cell.dismissedText && cell.dismissedText.length)) return;
-    var crits = splitLines(cell.criteria);
+    var crits = compactItems(cell.criteria);
     if (!cell.dismissed || !cell.dismissed.length) return;
     cell.dismissedText = [];
     cell.dismissed.forEach(function (idx) {
@@ -532,7 +736,7 @@
     var flags = [];
     if (!cell) return flags;
     var obj = (cell.objective || "").trim();
-    var crits = splitLines(cell.criteria);
+    var crits = compactItems(cell.criteria);
 
     if (obj && crits.length === 0) {
       flags.push({
@@ -646,7 +850,9 @@
 
         (plan.horizons || []).forEach(function (h) {
           var cell = (facet.cells || {})[h.id] || {};
-          var hasContent = cell.objective || cell.criteria || cell.tactics || (includeStatus && cell.status);
+          var crits = filledItems(cell.criteria);
+          var tacs = filledItems(cell.tactics);
+          var hasContent = String(cell.objective || "").trim() || crits.length || tacs.length || (includeStatus && String(cell.status || "").trim());
           if (!hasContent) return;
 
           var dateLabel = formatDateShort(fromIso(h.date));
@@ -657,15 +863,15 @@
             lines.push("**" + cell.objective + "**");
             lines.push("");
           }
-          splitLines(cell.criteria).forEach(function (c) {
+          crits.forEach(function (c) {
             lines.push("- ✓ " + c);
           });
-          if (splitLines(cell.criteria).length) lines.push("");
+          if (crits.length) lines.push("");
 
-          splitLines(cell.tactics).forEach(function (t) {
+          tacs.forEach(function (t) {
             lines.push("- ▪ " + t);
           });
-          if (splitLines(cell.tactics).length) lines.push("");
+          if (tacs.length) lines.push("");
 
           if (includeStatus && cell.status) {
             lines.push("**Status:** " + cell.status);
@@ -687,7 +893,7 @@
     var wb = XLSX.utils.book_new();
     var rows = [];
 
-    var header1 = ["", ""];
+    var header1 = [KIND, ""];
     var header2 = ["", ""];
     horizons.forEach(function (h) {
       var title = h.offsetDays + " Days - " + formatDate(fromIso(h.date)) + " - " + h.name;
@@ -699,12 +905,27 @@
 
     (plan.lenses || []).forEach(function (lens) {
       (lens.facets || []).forEach(function (facet, fi) {
-        var row = [fi === 0 ? lens.name : "", facet.name];
+        var slotCount = 1;
         horizons.forEach(function (h) {
           var cell = (facet.cells || {})[h.id] || {};
-          row.push(cell.objective || "", cell.criteria || "", cell.tactics || "", cell.status || "");
+          slotCount = Math.max(slotCount, compactItems(cell.criteria).length, compactItems(cell.tactics).length, 1);
         });
-        rows.push(row);
+        var slot;
+        for (slot = 0; slot < slotCount; slot++) {
+          var row = [slot === 0 && fi === 0 ? lens.name : "", slot === 0 ? facet.name : ""];
+          horizons.forEach(function (h) {
+            var cell = (facet.cells || {})[h.id] || {};
+            var crits = compactItems(cell.criteria);
+            var tacs = compactItems(cell.tactics);
+            row.push(
+              slot === 0 ? (cell.objective || "") : "",
+              crits[slot] || "",
+              tacs[slot] || "",
+              slot === 0 ? (cell.status || "") : ""
+            );
+          });
+          rows.push(row);
+        }
       });
     });
 
@@ -755,6 +976,7 @@
   }
 
   function downloadJson(plan) {
+    stampPlanVersion(plan);
     var json = JSON.stringify(plan, null, 2);
     downloadBlob(generateFilename(plan), "application/json;charset=utf-8", json);
   }
@@ -825,6 +1047,27 @@
       "organization": "organization", "organization/people": "organization"
     };
 
+    var oneItemPerCell = String(row1[0] || "").indexOf(KIND) === 0;
+
+    function xlsxCellItems(value) {
+      var s = String(value == null ? "" : value).replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
+      if (oneItemPerCell) return [s];
+      if (s.indexOf("\n") >= 0) return splitLines(s);
+      return [s.trim()];
+    }
+
+    function appendHorizonItems(target, row, hc) {
+      var baseCol = hc.col;
+      var obj = String(row[baseCol] || "").trim();
+      var status = colsPerHorizon >= 4 ? String(row[baseCol + 3] || "").trim() : "";
+      if (!target.cells[hc.id]) target.cells[hc.id] = emptyCell();
+      var cell = target.cells[hc.id];
+      if (obj && !String(cell.objective || "").trim()) cell.objective = obj;
+      cell.criteria = (Array.isArray(cell.criteria) ? cell.criteria : xlsxCellItems(cell.criteria)).concat(xlsxCellItems(row[baseCol + 1]));
+      cell.tactics = (Array.isArray(cell.tactics) ? cell.tactics : xlsxCellItems(cell.tactics)).concat(xlsxCellItems(row[baseCol + 2]));
+      if (status && !String(cell.status || "").trim()) cell.status = status;
+    }
+
     var currentLens = null;
     for (var ri = 2; ri < data.length; ri++) {
       var row = data[ri] || [];
@@ -836,15 +1079,24 @@
         if (lensKey) currentLens = lensKey;
       }
 
-      if (!facetName || !currentLens) continue;
+      if (!currentLens) continue;
+
+      if (!facetName) {
+        var prev = lensMap[currentLens][lensMap[currentLens].length - 1];
+        if (!prev) continue;
+        horizonCols.forEach(function (hc) {
+          appendHorizonItems(prev, row, hc);
+        });
+        continue;
+      }
 
       var cells = {};
       horizonCols.forEach(function (hc) {
         var baseCol = hc.col;
         cells[hc.id] = {
           objective: String(row[baseCol] || "").trim(),
-          criteria: String(row[baseCol + 1] || "").trim(),
-          tactics: String(row[baseCol + 2] || "").trim(),
+          criteria: xlsxCellItems(row[baseCol + 1]),
+          tactics: xlsxCellItems(row[baseCol + 2]),
           status: colsPerHorizon >= 4 ? String(row[baseCol + 3] || "").trim() : ""
         };
       });
@@ -866,7 +1118,7 @@
       };
     });
 
-    return {
+    return hydratePlan({
       version: VERSION,
       kind: KIND,
       seat: { title: "Imported Plan", family: familyFromTemplate(template) },
@@ -877,7 +1129,7 @@
       template: template ? { id: template.id, version: template.version } : undefined,
       horizons: horizons,
       lenses: lenses
-    };
+    });
   }
 
   function recomputeHorizonDates(plan, startDate) {
@@ -894,7 +1146,7 @@
 
   function cellHasContent(cell) {
     if (!cell) return false;
-    return !!(String(cell.objective || "").trim() || String(cell.criteria || "").trim() || String(cell.tactics || "").trim() || String(cell.status || "").trim());
+    return !!(String(cell.objective || "").trim() || filledItems(cell.criteria).length || filledItems(cell.tactics).length || String(cell.status || "").trim());
   }
 
   function facetHasContent(facet) {
@@ -1003,16 +1255,6 @@
     });
   }
 
-  function lineMarkup(kind, text, extraClass) {
-    var bul = "";
-    if (kind === "crit") bul = '<span class="tsn-bul" contenteditable="false" aria-hidden="true">✓</span>';
-    if (kind === "tac") bul = '<span class="tsn-bul" contenteditable="false" aria-hidden="true">▪</span>';
-    return '<div class="tsn-line tsn-line-' + kind + (extraClass ? " " + extraClass : "") + '">' +
-      bul +
-      '<span class="tsn-line-text" contenteditable="true" spellcheck="false">' + esc(text || "") + "</span>" +
-      "</div>";
-  }
-
   function ThirtySixtyNinetyEditor(opts) {
     this.rootId = (opts && opts.root) || "tsn-app";
     this.root = document.getElementById(this.rootId);
@@ -1026,10 +1268,18 @@
     this.fresh = false;
     this.peopleOpen = false;
     this.openMenuOpen = false;
+    this.templateMenuOpen = false;
+    this.templateOffer = false;
     this.panel = null;
     this.undo = null;
     this.suggestFor = null;
     this.bound = false;
+    this.sel = null;
+    this.editing = false;
+    this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
+    this.extraFacet = null;
     this.init();
   }
 
@@ -1041,12 +1291,26 @@
       self.template = getDefaultTemplate(bundle);
       if (err || !self.template) return;
       self.loadDraft();
+      var autoApplied = false;
       if (!self.plan) {
         self.plan = createNewPlan({ template: self.template });
         self.fresh = true;
+      } else {
+        self.template = resolvePlanTemplate(self.plan, self.bundle) || self.template;
+        if (shouldAutoApplyTemplate(self.plan, self.template)) {
+          self.undo = { type: "plan", plan: clonePlan(self.plan) };
+          applyTemplateToPlan(self.plan, self.template);
+          autoApplied = true;
+          self.saveDraft();
+        } else if (shouldOfferTemplateUpdate(self.plan, self.template)) {
+          self.templateOffer = true;
+        }
       }
       self.bindRootEvents();
       self.render();
+      if (autoApplied) {
+        self.showUndo("Loaded the " + templateExampleName(self.template) + " example.");
+      }
       if (self.fresh && !isNarrow() && !planHasCellContent(self.plan)) self.focusFirstCell();
     });
   };
@@ -1059,7 +1323,10 @@
 
   ThirtySixtyNinetyEditor.prototype.saveDraft = function () {
     try {
-      if (this.plan) localStorage.setItem(STORE_KEY, JSON.stringify(this.plan));
+      if (this.plan) {
+        stampPlanVersion(this.plan);
+        localStorage.setItem(STORE_KEY, JSON.stringify(this.plan));
+      }
     } catch (e) {}
   };
 
@@ -1086,7 +1353,16 @@
     var self = this;
 
     this.root.addEventListener("click", function (e) { self.onClick(e); });
+    this.root.addEventListener("mousedown", function (e) {
+      var actionEl = e.target.closest("[data-action]");
+      self._pointerOutsideCell = !e.target.closest(".tsn-cell") ||
+        !!actionEl ||
+        !!e.target.closest(".tsn-flag-card");
+      self._pointerRestore = self.pointerRestoreFromEvent(e);
+    }, true);
+    this.root.addEventListener("mouseup", function (e) { self.notePointerRestoreCaret(e); }, true);
     this.root.addEventListener("mousedown", function (e) { self.onCellMouseDown(e); });
+    this.root.addEventListener("dblclick", function (e) { self.onCellDblClick(e); });
     this.root.addEventListener("input", function (e) { self.onInput(e); });
     this.root.addEventListener("change", function (e) { self.onChange(e); });
     this.root.addEventListener("keydown", function (e) { self.onKeydown(e); });
@@ -1097,16 +1373,18 @@
     this.root.addEventListener("dragover", function (e) { self.onDragOver(e); });
     this.root.addEventListener("drop", function (e) { self.onDrop(e); });
 
-    document.addEventListener("click", function (e) {
+    document.addEventListener("mousedown", function (e) {
       if (!self.root.contains(e.target)) {
-        self.openMenuOpen = false;
-        var menu = self.root.querySelector(".tsn-open-menu");
-        if (menu) menu.hidden = true;
+        self._pointerOutsideCell = true;
+        self._pointerRestore = null;
       }
+    }, true);
+    document.addEventListener("click", function (e) {
+      if (!self.root.contains(e.target)) self.closeMenus();
     });
 
     window.addEventListener("beforeunload", function (e) {
-      if (self.dirty) {
+      if (self.dirty || self._pendingDirty) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -1126,27 +1404,31 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.onCellMouseDown = function (e) {
-    if (isNarrow()) return;
     var cell = e.target.closest(".tsn-cell");
-    if (!cell || e.target.closest(".tsn-line-text") || e.target.closest("[data-action]")) return;
+    if (!cell || e.target.closest("[data-action]") || e.target.closest(".tsn-flag-card") || e.target.closest(".tsn-cell-input")) return;
     var field = cell.getAttribute("data-field");
     if (!field || field === "pad") return;
-    var texts = cell.querySelectorAll(".tsn-line-text");
-    if (!texts.length) return;
     e.preventDefault();
-    this.placeCaret(texts[0]);
-    cell.classList.add("is-editing");
+    var sel = selFromEl(cell);
+    if (!isNarrow() && sameSel(this.sel, sel) && !this.editing) {
+      this.startEdit(sel, { selectAll: true });
+      return;
+    }
+    this.selectCell(sel, { edit: isNarrow() });
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onCellDblClick = function (e) {
+    if (isNarrow()) return;
+    if (e.target.closest(".tsn-cell-input")) return;
+    var cell = e.target.closest(".tsn-cell");
+    if (!cell || e.target.closest("[data-action]") || e.target.closest(".tsn-flag-card")) return;
+    var field = cell.getAttribute("data-field");
+    if (!field || field === "pad") return;
+    e.preventDefault();
+    this.startEdit(selFromEl(cell), { selectAll: true });
   };
 
   ThirtySixtyNinetyEditor.prototype.onClick = function (e) {
-    if (isNarrow()) {
-      var mobileCell = e.target.closest(".tsn-cell");
-      if (mobileCell && !e.target.closest("[data-action]") && !e.target.closest(".tsn-flag-card") && mobileCell.getAttribute("data-field") && mobileCell.getAttribute("data-field") !== "pad") {
-        e.preventDefault();
-        this.openPanel(mobileCell.getAttribute("data-lens"), mobileCell.getAttribute("data-facet"), mobileCell.getAttribute("data-horizon"));
-        return;
-      }
-    }
     var actionEl = e.target.closest("[data-action]");
     if (actionEl && this.root.contains(actionEl)) {
       var action = actionEl.getAttribute("data-action");
@@ -1154,10 +1436,8 @@
       return;
     }
     if (e.target.closest(".tsn-open-menu") || e.target.closest(".tsn-open-wrap")) return;
-    if (this.openMenuOpen) {
-      this.openMenuOpen = false;
-      var menu = this.root.querySelector(".tsn-open-menu");
-      if (menu) menu.hidden = true;
+    if (this.openMenuOpen || this.templateMenuOpen) {
+      this.closeMenus();
     }
   };
 
@@ -1166,8 +1446,25 @@
     if (action === "open-menu") {
       e.stopPropagation();
       this.openMenuOpen = !this.openMenuOpen;
-      var menu = this.root.querySelector(".tsn-open-menu");
+      this.templateMenuOpen = false;
+      var menu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
       if (menu) menu.hidden = !this.openMenuOpen;
+      var templateMenu = this.root.querySelector(".tsn-template-menu");
+      if (templateMenu) templateMenu.hidden = true;
+      return;
+    }
+    if (action === "use-template-menu") {
+      e.stopPropagation();
+      var next = !this.templateMenuOpen;
+      var parts = this.setTemplateMenuOpen(next);
+      if (next && parts.menu && e.detail === 0) {
+        var first = parts.menu.querySelector("[role=\"menuitem\"]");
+        if (first && first.focus) first.focus();
+      }
+      return;
+    }
+    if (action === "use-template") {
+      this.requestUseTemplate(el && el.getAttribute("data-template"));
       return;
     }
     if (action === "open-json") {
@@ -1332,6 +1629,10 @@
 
   ThirtySixtyNinetyEditor.prototype.onInput = function (e) {
     var t = e.target;
+    if (t.classList.contains("tsn-cell-input")) {
+      this.notePendingEdit(t.value);
+      return;
+    }
     if (t.classList.contains("tsn-seat-title")) {
       this.plan.seat.title = t.textContent.replace(/\u00a0/g, " ").trim();
       this.touch();
@@ -1382,11 +1683,6 @@
       this.refreshPanelFlags();
       return;
     }
-    var cellEl = t.closest(".tsn-cell");
-    if (cellEl && t.closest(".tsn-line-text")) {
-      this.syncCellFromDom(cellEl, false);
-      this.updateCellFillState(cellEl);
-    }
   };
 
   ThirtySixtyNinetyEditor.prototype.onChange = function (e) {
@@ -1417,63 +1713,179 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.onKeydown = function (e) {
-    var lineText = e.target.closest(".tsn-line-text");
-    if (!lineText) {
-      if (e.key === "Enter" && e.target.classList && e.target.classList.contains("tsn-cell")) {
-        var expand = e.target.querySelector("[data-action='expand']");
-        if (expand) this.handleAction("expand", e, expand);
+    if (this.root.querySelector(".tsn-confirm")) return;
+    if (e.target.closest && e.target.closest(".tsn-people-panel")) return;
+    if (e.target.classList && (e.target.classList.contains("tsn-start-date-input") || e.target.classList.contains("tsn-horizon-date-input"))) return;
+    if (e.target.classList && e.target.classList.contains("tsn-editable") && !e.target.closest(".tsn-cell")) return;
+    if (isNarrow()) {
+      if (e.target.classList && e.target.classList.contains("tsn-cell-input") && e.key !== "Tab") {
+        this.onEditKeydown(e);
+      }
+      if (e.target.closest && e.target.closest(".tsn-template-wrap")) {
+        this.onTemplateMenuKeydown(e);
       }
       return;
     }
-    var edit = lineText.closest(".tsn-cell-edit");
-    var cell = lineText.closest(".tsn-cell");
-    if (!cell || !edit) return;
-    var field = cell.getAttribute("data-field");
-
-    if (e.key === "Tab") {
-      e.preventDefault();
-      this.commitCell(cell);
-      this.moveCell(cell, e.shiftKey ? "left" : "right");
+    if (e.target.classList && e.target.classList.contains("tsn-cell-input")) {
+      this.onEditKeydown(e);
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (field === "oc") this.insertLine(edit, "crit");
-      else if (field === "tactics") this.insertLine(edit, "tac");
-      else if (field === "status") this.insertLine(edit, "status");
+    if (e.target.closest && e.target.closest(".tsn-template-wrap")) {
+      this.onTemplateMenuKeydown(e);
       return;
     }
-    if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "ArrowDown") {
-      if (this.caretAtEdge(e.key)) {
-        e.preventDefault();
-        this.commitCell(cell);
-        var dir = e.key === "ArrowRight" ? "right" : e.key === "ArrowLeft" ? "left" : e.key === "ArrowUp" ? "up" : "down";
-        this.moveCell(cell, dir);
-      }
+    if (e.target.closest && e.target.closest(".tsn-flag-card")) {
+      this.onFlagKeydown(e);
+      return;
     }
+    if (e.target.closest && e.target.closest("[data-action]")) return;
+    var gridCell = e.target.closest ? e.target.closest(".tsn-cell") : null;
+    if (!gridCell || gridCell.getAttribute("data-field") === "pad") return;
+    if (this.sel && !this.editing) this.onGridKeydown(e);
   };
 
   ThirtySixtyNinetyEditor.prototype.onFocusIn = function (e) {
     var cell = e.target.closest(".tsn-cell");
-    if (cell) cell.classList.add("is-editing");
+    if (!cell) return;
+    if (e.target.classList.contains("tsn-cell-input")) {
+      cell.classList.add("is-editing");
+      return;
+    }
+    if (e.target !== cell) return;
+    if (cell.getAttribute("data-field") === "pad") return;
+    var sel = selFromEl(cell);
+    if (!sel || sameSel(this.sel, sel) || this.editing) return;
+    this.sel = sel;
+    this.markSelected();
   };
 
   ThirtySixtyNinetyEditor.prototype.onFocusOut = function (e) {
     if (this._rendering) return;
+    if (!this.editing) return;
+    if (!e.target.classList || !e.target.classList.contains("tsn-cell-input")) return;
     var cell = e.target.closest(".tsn-cell");
-    if (!cell || !this.root.contains(cell)) return;
     var next = e.relatedTarget;
-    if (next && cell.contains(next)) return;
-    cell.classList.remove("is-editing");
-    this.commitCell(cell);
-    this.refreshCellFlags(cell);
+    if (next && cell && cell.contains(next)) return;
+    this.commitEdit();
+    var leaveGrid = this._pointerOutsideCell || !!(next && this.root.contains(next) && !(cell && cell.contains(next)));
+    var restore = this._pointerRestore;
+    var gen = this._renderGen || 0;
+    var self = this;
+    setTimeout(function () {
+      self._pointerOutsideCell = false;
+      self._pointerRestore = null;
+      if (!self.root || self.editing || self._rendering) return;
+      var active = document.activeElement;
+      var keepOutside = leaveGrid || (active && self.root.contains(active) && !active.closest(".tsn-cell"));
+      if (self.root.querySelector(".tsn-confirm")) {
+        self._blurRefreshWaiting = true;
+        return;
+      }
+      if ((self._renderGen || 0) !== gen) {
+        if (keepOutside) self.focusPointerRestore(restore);
+        return;
+      }
+      self.render({ keepFocus: !keepOutside });
+      if (!keepOutside) self.focusSelected();
+      else self.focusPointerRestore(restore);
+    }, 0);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.pointerRestoreFromEvent = function (e) {
+    var t = e && e.target;
+    if (!t || !t.closest) return null;
+    if (t.closest(".tsn-cell")) return null;
+    var actionEl = t.closest("[data-action]");
+    if (actionEl) return { action: actionEl.getAttribute("data-action") };
+    var startEl = t.closest(".tsn-start-date-input") ||
+      (t.closest(".tsn-start-wrap") && t.closest(".tsn-start-wrap").querySelector(".tsn-start-date-input"));
+    if (startEl) return { className: "tsn-start-date-input", x: e.clientX, y: e.clientY };
+    var hDate = t.closest(".tsn-horizon-date-input") ||
+      (t.closest(".tsn-h-date") && t.closest(".tsn-h-date").querySelector(".tsn-horizon-date-input"));
+    if (hDate) {
+      return {
+        className: "tsn-horizon-date-input",
+        horizonId: hDate.getAttribute("data-horizon"),
+        x: e.clientX,
+        y: e.clientY
+      };
+    }
+    if (t.closest(".tsn-person-name")) return { className: "tsn-person-name", x: e.clientX, y: e.clientY };
+    if (t.closest(".tsn-manager-name")) return { className: "tsn-manager-name", x: e.clientX, y: e.clientY };
+    if (t.closest(".tsn-seat-title")) return { className: "tsn-seat-title", x: e.clientX, y: e.clientY };
+    var facet = t.closest(".tsn-facet-name");
+    if (facet) {
+      return {
+        className: "tsn-facet-name",
+        lensId: facet.getAttribute("data-lens"),
+        facetId: facet.getAttribute("data-facet"),
+        x: e.clientX,
+        y: e.clientY
+      };
+    }
+    return null;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.notePointerRestoreCaret = function (e) {
+    var restore = this._pointerRestore;
+    var t = e && e.target;
+    if (!restore || restore.action || !t || typeof t.selectionStart !== "number") return;
+    restore.start = t.selectionStart;
+    restore.end = t.selectionEnd;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.focusPointerRestore = function (restore) {
+    if (!restore || !this.root) return;
+    var el = null;
+    if (restore.action) el = this.root.querySelector('[data-action="' + restore.action + '"]');
+    else if (restore.className === "tsn-facet-name" && restore.lensId) {
+      el = this.root.querySelector('.tsn-facet-name[data-lens="' + restore.lensId + '"][data-facet="' + restore.facetId + '"]');
+    } else if (restore.className === "tsn-horizon-date-input" && restore.horizonId) {
+      el = this.root.querySelector('.tsn-horizon-date-input[data-horizon="' + restore.horizonId + '"]');
+    } else if (restore.className) el = this.root.querySelector("." + restore.className);
+    if (!el) return;
+    if (el.focus) el.focus();
+    if (typeof el.setSelectionRange === "function" && typeof restore.start === "number") {
+      try { el.setSelectionRange(restore.start, restore.end); } catch (err) {}
+      return;
+    }
+    if (restore.x == null || restore.y == null || typeof document === "undefined") return;
+    var range = null;
+    if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(restore.x, restore.y);
+    else if (document.caretPositionFromPoint) {
+      var pos = document.caretPositionFromPoint(restore.x, restore.y);
+      if (pos && document.createRange) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+    }
+    if (!range || !el.contains(range.startContainer) || !window.getSelection) return;
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 
   ThirtySixtyNinetyEditor.prototype.onPaste = function (e) {
-    if (!e.target.closest(".tsn-line-text")) return;
-    e.preventDefault();
-    var text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
-    document.execCommand("insertText", false, text.replace(/\n/g, " "));
+    var text = ((e.clipboardData || window.clipboardData).getData("text/plain") || "").replace(/\r\n/g, "\n");
+    if (!text) return;
+    if (e.target.classList && e.target.classList.contains("tsn-cell-input")) {
+      var field = this.sel && this.sel.field;
+      if (!field && e.target.closest) {
+        var host = e.target.closest(".tsn-cell");
+        field = host && host.getAttribute("data-field");
+      }
+      if (field === "objective" || field === "status") return;
+      if (text.indexOf("\n") < 0) return;
+      e.preventDefault();
+      this.commitEdit();
+      this.pasteIntoSel(text);
+      return;
+    }
+    if (this.sel && !this.editing && e.target.closest && e.target.closest(".tsn-cell")) {
+      e.preventDefault();
+      this.pasteIntoSel(text);
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.onDragStart = function (e) {
@@ -1519,172 +1931,178 @@
     this.render();
   };
 
-  ThirtySixtyNinetyEditor.prototype.cellElHasText = function (cellEl) {
-    var edit = cellEl.querySelector(".tsn-cell-edit");
-    if (!edit) return false;
-    return this.readLines(edit).some(function (l) { return l.trim(); });
-  };
-
-  ThirtySixtyNinetyEditor.prototype.updateCellFillState = function (cellEl) {
-    var lines = this.readLines(cellEl.querySelector(".tsn-cell-edit") || cellEl);
-    var field = cellEl.getAttribute("data-field");
-    var hasAny = lines.some(function (l) { return String(l).trim(); });
-    cellEl.classList.toggle("is-filled", hasAny);
-    if (field === "oc") {
-      cellEl.classList.toggle("has-obj", !!(lines[0] && String(lines[0]).trim()));
-      cellEl.classList.toggle("has-crit", lines.slice(1).some(function (l) { return String(l).trim(); }));
+  ThirtySixtyNinetyEditor.prototype.facetSlotCount = function (lens, facet) {
+    var n = 1;
+    (this.plan.horizons || []).forEach(function (h) {
+      var cell = (facet.cells && facet.cells[h.id]) || {};
+      n = Math.max(n, compactItems(cell.criteria).length, compactItems(cell.tactics).length, 1);
+    });
+    if (this.extraFacet && lens && this.extraFacet.lensId === lens.id && this.extraFacet.facetId === facet.id) {
+      n += 1;
     }
-    if (field === "tactics") cellEl.classList.toggle("has-tac", hasAny);
+    return n;
   };
 
-  ThirtySixtyNinetyEditor.prototype.readLines = function (editEl) {
-    var lines = [];
-    if (!editEl) return lines;
-    var nodes = editEl.querySelectorAll(".tsn-line");
-    if (nodes.length) {
-      nodes.forEach(function (node) {
-        var textEl = node.querySelector(".tsn-line-text");
-        var t = ((textEl ? textEl.textContent : node.textContent) || "").replace(/\u00a0/g, " ").replace(/\u200b/g, "").trim();
-        lines.push(t);
+  ThirtySixtyNinetyEditor.prototype.gridCoords = function () {
+    var coords = [];
+    var self = this;
+    (this.plan.lenses || []).forEach(function (lens) {
+      if (self.collapsedLenses[lens.id]) return;
+      (lens.facets || []).forEach(function (facet) {
+        var slots = self.facetSlotCount(lens, facet);
+        var s;
+        for (s = 0; s < slots; s++) {
+          (self.plan.horizons || []).forEach(function (h) {
+            if (s === 0) coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "objective", index: 0 });
+            coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "criteria", index: s });
+            coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "tactics", index: s });
+            if (s === 0 && self.showStatus) {
+              coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "status", index: 0 });
+            }
+          });
+        }
       });
-    } else {
-      lines = splitLines(editEl.textContent);
-    }
-    return lines;
+    });
+    return coords;
   };
 
-  ThirtySixtyNinetyEditor.prototype.syncCellFromDom = function (cellEl, trimEmpty) {
-    var lensId = cellEl.getAttribute("data-lens");
-    var facetId = cellEl.getAttribute("data-facet");
-    var horizonId = cellEl.getAttribute("data-horizon");
-    var field = cellEl.getAttribute("data-field");
-    var cell = getCell(this.plan, lensId, facetId, horizonId);
+  ThirtySixtyNinetyEditor.prototype.writeSel = function (sel, value, plan) {
+    if (!sel) return;
+    var cell = getCell(plan || this.plan, sel.lensId, sel.facetId, sel.horizonId);
     if (!cell) return;
-    if (!this.root.contains(cellEl)) return;
-    var edit = cellEl.querySelector(".tsn-cell-edit");
-    if (!edit) return;
-    var lines = this.readLines(edit);
-    if (trimEmpty) {
-      while (lines.length > 1 && !String(lines[lines.length - 1]).trim()) lines.pop();
+    if (sel.field === "objective" || sel.field === "status") {
+      cell[sel.field] = String(value == null ? "" : value).replace(/\u00a0/g, " ").trim();
+    } else {
+      setItem(cell, sel.field, sel.index, value);
     }
-    if (field === "oc") {
-      cell.objective = lines[0] || "";
-      cell.criteria = lines.slice(1).filter(function (l) { return String(l).trim(); }).join("\n");
-      pruneDismissals(cell);
-    } else if (field === "tactics") {
-      cell.tactics = lines.filter(function (l) { return String(l).trim(); }).join("\n");
-    } else if (field === "status") {
-      cell.status = lines.filter(function (l) { return String(l).trim(); }).join("\n");
-    }
+    pruneDismissals(cell);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.commitEdit = function () {
+    if (!this.editing || !this.sel) return;
+    var input = this.root.querySelector(".tsn-cell-input");
+    var value = input ? input.value : this.editOriginal;
+    this.writeSel(this.sel, value);
+    this.editing = false;
+    this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
+    this.extraFacet = null;
     this.touch();
   };
 
-  ThirtySixtyNinetyEditor.prototype.commitCell = function (cellEl) {
-    this.syncCellFromDom(cellEl, true);
-    this.updateCellFillState(cellEl);
-  };
-
   ThirtySixtyNinetyEditor.prototype.commitAllEdits = function () {
-    var self = this;
-    var panel = this.panel;
-    this.root.querySelectorAll(".tsn-cell.is-editing, .tsn-cell .tsn-cell-edit").forEach(function (el) {
-      var cell = el.classList.contains("tsn-cell") ? el : el.closest(".tsn-cell");
-      if (!cell) return;
-      if (panel &&
-          cell.getAttribute("data-lens") === panel.lensId &&
-          cell.getAttribute("data-facet") === panel.facetId &&
-          cell.getAttribute("data-horizon") === panel.horizonId) {
-        return;
-      }
-      self.syncCellFromDom(cell, true);
-    });
+    this.commitEdit();
     this.syncPanelToCell();
   };
 
-  ThirtySixtyNinetyEditor.prototype.insertLine = function (edit, kind) {
-    var line = document.createElement("div");
-    line.className = "tsn-line tsn-line-" + kind;
-    if (kind === "crit" || kind === "tac") {
-      var bul = document.createElement("span");
-      bul.className = "tsn-bul";
-      bul.contentEditable = "false";
-      bul.setAttribute("aria-hidden", "true");
-      bul.textContent = kind === "crit" ? "✓" : "▪";
-      line.appendChild(bul);
+  ThirtySixtyNinetyEditor.prototype.cancelEdit = function () {
+    this.editing = false;
+    this.editOriginal = "";
+    this._pendingDirty = false;
+    this._pendingValue = null;
+    this.saveDraft();
+    this.render({ keepFocus: true });
+    this.focusSelected();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.notePendingEdit = function (value) {
+    this._pendingValue = value;
+    this._pendingDirty = String(value) !== String(this.editOriginal || "");
+    if (!this._pendingDirty || !this.plan || !this.sel) {
+      this.saveDraft();
+      return;
     }
-    var text = document.createElement("span");
-    text.className = "tsn-line-text";
-    text.contentEditable = "true";
-    text.spellcheck = false;
-    line.appendChild(text);
-    var current = this.currentLine();
-    if (current && current.parentNode === edit) {
-      if (current.nextSibling) edit.insertBefore(line, current.nextSibling);
-      else edit.appendChild(line);
+    try {
+      var snapshot = JSON.parse(JSON.stringify(this.plan));
+      this.writeSel(this.sel, value, snapshot);
+      localStorage.setItem(STORE_KEY, JSON.stringify(snapshot));
+    } catch (e) {}
+  };
+
+  ThirtySixtyNinetyEditor.prototype.selectCell = function (sel, opts) {
+    opts = opts || {};
+    var committed = false;
+    if (this.editing) {
+      this.commitEdit();
+      committed = true;
+    }
+    this.sel = sel;
+    this.editing = false;
+    if (opts.edit) {
+      this.startEdit(sel, opts);
+      return;
+    }
+    if (committed) {
+      this.render({ keepFocus: true });
+      this.focusSelected();
+      return;
+    }
+    this.markSelected();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.markSelected = function () {
+    if (!this.root || !this.sel) return;
+    this.root.querySelectorAll(".tsn-cell.is-selected").forEach(function (el) {
+      el.classList.remove("is-selected");
+      el.tabIndex = -1;
+    });
+    var el = this.root.querySelector(this.cellSelector(this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index));
+    if (el) {
+      el.classList.add("is-selected");
+      el.tabIndex = 0;
+      if (el.focus) el.focus();
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.startEdit = function (sel, opts) {
+    opts = opts || {};
+    if (this.editing && this.sel && !sameSel(this.sel, sel)) this.commitEdit();
+    this.sel = sel;
+    this.editing = true;
+    var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
+    this.editOriginal = cellItemText(cell, sel.field, sel.index);
+    this.render({ keepFocus: true });
+    var input = this.root.querySelector(".tsn-cell-input");
+    if (!input) return;
+    input.focus();
+    if (opts.replace != null) {
+      input.value = opts.replace;
+      input.setSelectionRange(input.value.length, input.value.length);
+      this.notePendingEdit(input.value);
+    } else if (opts.selectAll) {
+      input.select();
     } else {
-      edit.appendChild(line);
-    }
-    this.placeCaret(text);
-    var cell = edit.closest(".tsn-cell");
-    if (cell) {
-      cell.classList.add("is-filled");
-      this.syncCellFromDom(cell, false);
+      input.setSelectionRange(input.value.length, input.value.length);
     }
   };
 
-  ThirtySixtyNinetyEditor.prototype.currentLine = function () {
-    var sel = window.getSelection();
-    if (!sel || !sel.anchorNode) return null;
-    var node = sel.anchorNode;
-    if (node.nodeType === 3) node = node.parentNode;
-    return node.closest ? node.closest(".tsn-line") : null;
-  };
-
-  ThirtySixtyNinetyEditor.prototype.placeCaret = function (el) {
-    if (!el) return;
-    el.focus();
-    var range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    var sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-  };
-
-  ThirtySixtyNinetyEditor.prototype.caretAtEdge = function (key) {
-    var sel = window.getSelection();
-    if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
-    var edit = sel.anchorNode && sel.anchorNode.parentElement && sel.anchorNode.parentElement.closest
-      ? (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement.closest(".tsn-cell-edit") : sel.anchorNode.closest(".tsn-cell-edit"))
-      : null;
-    if (!edit) return false;
-    var text = (edit.textContent || "").replace(/\u00a0/g, " ");
-    if (!text.trim()) return true;
-    var range = sel.getRangeAt(0);
-    if (key === "ArrowLeft" || key === "ArrowUp") {
-      var pre = document.createRange();
-      pre.selectNodeContents(edit);
-      pre.setEnd(range.startContainer, range.startOffset);
-      return pre.toString().length === 0;
+  ThirtySixtyNinetyEditor.prototype.focusSelected = function () {
+    if (!this.sel || !this.root) return;
+    if (this.editing) {
+      var input = this.root.querySelector(".tsn-cell-input");
+      if (input) input.focus();
+      return;
     }
-    var post = document.createRange();
-    post.selectNodeContents(edit);
-    post.setStart(range.endContainer, range.endOffset);
-    return post.toString().length === 0;
+    var el = this.root.querySelector(this.cellSelector(this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index));
+    if (el && el.focus) el.focus();
   };
 
-  ThirtySixtyNinetyEditor.prototype.cellSelector = function (lensId, facetId, horizonId, field) {
-    return '.tsn-cell[data-lens="' + lensId + '"][data-facet="' + facetId + '"][data-horizon="' + horizonId + '"][data-field="' + field + '"]';
+  ThirtySixtyNinetyEditor.prototype.cellSelector = function (lensId, facetId, horizonId, field, index) {
+    var sel = '.tsn-cell[data-lens="' + lensId + '"][data-facet="' + facetId + '"][data-horizon="' + horizonId + '"][data-field="' + field + '"]';
+    if (index != null) sel += '[data-index="' + index + '"]';
+    return sel;
   };
 
   ThirtySixtyNinetyEditor.prototype.focusCell = function (lensId, facetId, horizonId, field, lineIndex) {
-    var cell = this.root.querySelector(this.cellSelector(lensId, facetId, horizonId, field || "oc"));
-    if (!cell) return;
-    var lines = cell.querySelectorAll(".tsn-line-text");
-    var target = null;
-    if (lineIndex != null && lines[lineIndex]) target = lines[lineIndex];
-    else target = lines[0];
-    if (target) this.placeCaret(target);
+    var mapped = field === "oc" ? "objective" : field;
+    var index = 0;
+    if (mapped === "criteria" || mapped === "tactics") index = lineIndex == null ? 0 : lineIndex;
+    if (field === "oc" && lineIndex != null && lineIndex > 0) {
+      mapped = "criteria";
+      index = lineIndex - 1;
+    }
+    this.selectCell({ lensId: lensId, facetId: facetId, horizonId: horizonId, field: mapped, index: index });
   };
 
   ThirtySixtyNinetyEditor.prototype.focusFirstCell = function () {
@@ -1692,51 +2110,319 @@
     var facet = lens && lens.facets[0];
     var h = this.plan.horizons[0];
     if (lens && facet && h) {
-      var cell = this.root.querySelector(this.cellSelector(lens.id, facet.id, h.id, "oc"));
-      if (cell) cell.classList.add("is-editing");
-      this.focusCell(lens.id, facet.id, h.id, "oc");
+      this.selectCell({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "objective", index: 0 });
     }
   };
 
-  ThirtySixtyNinetyEditor.prototype.moveCell = function (cell, dir) {
-    var lensId = cell.getAttribute("data-lens");
-    var facetId = cell.getAttribute("data-facet");
-    var horizonId = cell.getAttribute("data-horizon");
-    var field = cell.getAttribute("data-field");
-    var coords = [];
-    var self = this;
-    this.plan.lenses.forEach(function (lens) {
-      if (self.collapsedLenses[lens.id]) return;
-      lens.facets.forEach(function (facet) {
-        self.plan.horizons.forEach(function (h) {
-          coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "oc" });
-          coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "tactics" });
-          if (self.showStatus) coords.push({ lensId: lens.id, facetId: facet.id, horizonId: h.id, field: "status" });
-        });
-      });
-    });
+  ThirtySixtyNinetyEditor.prototype.moveSel = function (dir) {
+    if (!this.sel) return false;
+    var coords = this.gridCoords();
+    var current = this.sel;
     var idx = -1;
     coords.forEach(function (c, i) {
-      if (c.lensId === lensId && c.facetId === facetId && c.horizonId === horizonId && c.field === field) idx = i;
+      if (sameSel(c, current)) idx = i;
     });
-    if (idx < 0) return;
+    if (idx < 0) {
+      if (coords[0]) this.selectCell(coords[0]);
+      return !!coords[0];
+    }
     var next = idx;
     if (dir === "right") next = Math.min(coords.length - 1, idx + 1);
     if (dir === "left") next = Math.max(0, idx - 1);
     if (dir === "down" || dir === "up") {
-      var fieldsPerHorizon = this.showStatus ? 3 : 2;
-      var fieldsPerFacet = this.plan.horizons.length * fieldsPerHorizon;
-      next = dir === "down" ? idx + fieldsPerFacet : idx - fieldsPerFacet;
-      if (next < 0 || next >= coords.length) return;
+      var col = coords.filter(function (c) {
+        return c.horizonId === current.horizonId && c.field === current.field;
+      });
+      var colIdx = -1;
+      col.forEach(function (c, i) {
+        if (sameSel(c, current)) colIdx = i;
+      });
+      if (colIdx < 0) return false;
+      var dest = dir === "down" ? colIdx + 1 : colIdx - 1;
+      if (dest < 0 || dest >= col.length) return false;
+      this.selectCell(col[dest]);
+      return true;
     }
-    var c = coords[next];
-    this.focusCell(c.lensId, c.facetId, c.horizonId, c.field);
+    if (next === idx) return false;
+    this.selectCell(coords[next]);
+    return true;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onGridKeydown = function (e) {
+    if (!this.sel) return;
+    if (e.key === "ArrowRight") { e.preventDefault(); this.moveSel("right"); return; }
+    if (e.key === "ArrowLeft") { e.preventDefault(); this.moveSel("left"); return; }
+    if (e.key === "ArrowDown") { e.preventDefault(); this.moveSel("down"); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); this.moveSel("up"); return; }
+    if (e.key === "Tab") {
+      if (!e.shiftKey && this.focusFlagActions()) {
+        e.preventDefault();
+        return;
+      }
+      if (!this.moveSel(e.shiftKey ? "left" : "right")) return;
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "Enter" || e.key === "F2") {
+      e.preventDefault();
+      this.startEdit(this.sel);
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      this.clearOrRemoveSelected();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
+      e.preventDefault();
+      this.copySelected();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) {
+      return;
+    }
+    if (isTypingKey(e)) {
+      e.preventDefault();
+      this.startEdit(this.sel, { replace: e.key });
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onEditKeydown = function (e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.cancelEdit();
+      return;
+    }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (!e.shiftKey && this.sel && this.sel.field === "criteria") {
+        this.commitEdit();
+        this.render({ keepFocus: true });
+        if (this.focusFlagActions()) return;
+      }
+      this.finishEditAndMove(e.shiftKey ? "left" : "right");
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      this.finishEditAndMove("down");
+      return;
+    }
+    if ((e.key === "Backspace" || e.key === "Delete") &&
+        this.sel && (this.sel.field === "criteria" || this.sel.field === "tactics") &&
+        !String(e.target.value || "").trim()) {
+      e.preventDefault();
+      this.editing = false;
+      this.editOriginal = "";
+      this._pendingDirty = false;
+      this._pendingValue = null;
+      this.clearOrRemoveSelected();
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.finishEditAndMove = function (dir) {
+    var sel = this.sel;
+    var input = this.root.querySelector(".tsn-cell-input");
+    var value = input ? input.value : "";
+    this.commitEdit();
+    if (dir === "down" && sel && (sel.field === "criteria" || sel.field === "tactics") && String(value).trim()) {
+      var lens = getLens(this.plan, sel.lensId);
+      var facet = getFacet(lens, sel.facetId);
+      var last = facet ? this.facetSlotCount(lens, facet) - 1 : sel.index;
+      if (sel.index >= last) {
+        this.extraFacet = { lensId: sel.lensId, facetId: sel.facetId };
+        this.startEdit({
+          lensId: sel.lensId,
+          facetId: sel.facetId,
+          horizonId: sel.horizonId,
+          field: sel.field,
+          index: sel.index + 1
+        });
+        return;
+      }
+    }
+    this.clampSel();
+    this.render({ keepFocus: true });
+    if (!this.moveSel(dir) && (dir === "left" || dir === "right")) {
+      var exit = dir === "left"
+        ? this.root.querySelector(".tsn-people-link")
+        : this.root.querySelector(".tsn-add-180") || this.root.querySelector(".tsn-people-link");
+      if (exit && exit.focus) exit.focus();
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.clearOrRemoveSelected = function () {
+    var sel = this.sel;
+    if (!sel) return;
+    var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
+    var text = cellItemText(cell, sel.field, sel.index);
+    if (String(text).trim()) {
+      this.writeSel(sel, "");
+      this.clampSel();
+      this.touch();
+      this.render({ keepFocus: true });
+      this.focusSelected();
+      return;
+    }
+    if (sel.field !== "criteria" && sel.field !== "tactics") return;
+    var lens = getLens(this.plan, sel.lensId);
+    var facet = getFacet(lens, sel.facetId);
+    var last = facet ? this.facetSlotCount(lens, facet) - 1 : sel.index;
+    if (this.extraFacet && this.extraFacet.lensId === sel.lensId && this.extraFacet.facetId === sel.facetId && sel.index >= last) {
+      this.extraFacet = null;
+    } else {
+      removeItem(cell, sel.field, sel.index);
+    }
+    this.clampSel();
+    this.touch();
+    this.render({ keepFocus: true });
+    this.focusSelected();
+  };
+
+  ThirtySixtyNinetyEditor.prototype.flagActionButtons = function () {
+    if (!this.root || !this.sel || this.sel.field !== "criteria") return [];
+    var el = this.root.querySelector(this.cellSelector(
+      this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index
+    ));
+    if (!el || typeof el.querySelectorAll !== "function") return [];
+    var nodes = el.querySelectorAll(".tsn-flag-actions button");
+    var out = [];
+    var i;
+    for (i = 0; i < nodes.length; i++) out.push(nodes[i]);
+    return out;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.focusFlagActions = function (index) {
+    var buttons = this.flagActionButtons();
+    if (!buttons.length) return false;
+    var i = index == null ? 0 : index;
+    if (i < 0) i = 0;
+    if (i >= buttons.length) i = buttons.length - 1;
+    if (buttons[i] && buttons[i].focus) buttons[i].focus();
+    return true;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onFlagKeydown = function (e) {
+    var buttons = this.flagActionButtons();
+    var idx = -1;
+    var i;
+    for (i = 0; i < buttons.length; i++) {
+      if (buttons[i] === e.target) idx = i;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.focusSelected();
+      return;
+    }
+    if (e.key !== "Tab" || !buttons.length) return;
+    if (e.shiftKey && idx <= 0) {
+      e.preventDefault();
+      this.focusSelected();
+      return;
+    }
+    if (!e.shiftKey && idx >= buttons.length - 1) {
+      e.preventDefault();
+      if (!this.moveSel("right")) this.focusSelected();
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.clampSel = function () {
+    if (!this.plan) {
+      this.sel = null;
+      return;
+    }
+    if (!this.sel) return;
+    var coords = this.gridCoords();
+    if (!coords.length) {
+      this.sel = null;
+      return;
+    }
+    var current = this.sel;
+    var found = coords.some(function (c) { return sameSel(c, current); });
+    if (found) return;
+    var sameHorizon = [];
+    coords.forEach(function (c) {
+      if (c.lensId === current.lensId && c.facetId === current.facetId && c.horizonId === current.horizonId) {
+        sameHorizon.push(c);
+      }
+    });
+    if (sameHorizon.length) {
+      var sameField = sameHorizon.filter(function (c) { return c.field === current.field; });
+      if (sameField.length) {
+        this.sel = sameField[Math.min(current.index || 0, sameField.length - 1)];
+        return;
+      }
+      this.sel = sameHorizon[0];
+      return;
+    }
+    this.sel = coords[0];
+  };
+
+  function copyViaExec(text) {
+    if (typeof document === "undefined" || !document.createElement) return false;
+    var ta = document.createElement("textarea");
+    ta.value = text == null ? "" : String(text);
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    if (document.body && document.body.appendChild) document.body.appendChild(ta);
+    if (ta.select) ta.select();
+    var ok = false;
+    try { ok = !!(document.execCommand && document.execCommand("copy")); } catch (err) {}
+    if (document.body && document.body.removeChild) document.body.removeChild(ta);
+    return ok;
+  }
+
+  ThirtySixtyNinetyEditor.prototype.copySelected = function (e) {
+    var sel = this.sel;
+    if (!sel) return false;
+    var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
+    var text = cellItemText(cell, sel.field, sel.index);
+    if (e && e.clipboardData && e.clipboardData.setData) {
+      e.clipboardData.setData("text/plain", text);
+      if (e.preventDefault) e.preventDefault();
+      return true;
+    }
+    var clip = typeof navigator !== "undefined" && navigator.clipboard;
+    if (clip && clip.writeText) {
+      var p = clip.writeText(text);
+      if (p && p.catch) p.catch(function () { copyViaExec(text); });
+      return p;
+    }
+    return copyViaExec(text);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.pasteIntoSel = function (text) {
+    var sel = this.sel;
+    if (!sel) return;
+    var cell = getCell(this.plan, sel.lensId, sel.facetId, sel.horizonId);
+    if (!cell) return;
+    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n").map(function (l) { return l.trim(); }).filter(function (l) { return l; });
+    if ((sel.field === "criteria" || sel.field === "tactics") && lines.length > 1) {
+      var i;
+      for (i = 0; i < lines.length; i++) setItem(cell, sel.field, sel.index + i, lines[i]);
+      this.extraFacet = null;
+      this.sel = {
+        lensId: sel.lensId,
+        facetId: sel.facetId,
+        horizonId: sel.horizonId,
+        field: sel.field,
+        index: sel.index + lines.length - 1
+      };
+    } else if (sel.field === "objective" || sel.field === "status") {
+      this.writeSel(sel, String(text || "").replace(/\r\n/g, "\n").replace(/^\n+|\n+$/g, ""));
+    } else {
+      this.writeSel(sel, lines[0] || String(text || "").replace(/\n/g, " ").trim());
+    }
+    this.editing = false;
+    this.touch();
+    this.render({ keepFocus: true });
+    this.focusSelected();
   };
 
   function flagCardHtml(flag) {
     return '<div class="tsn-flag-card" data-line="' + flag.lineIndex + '">' +
       '<div class="tsn-flag-note">That\'s a tactic.</div>' +
-      (flag.text ? '<div class="tsn-flag-text">' + esc(flag.text) + "</div>" : "") +
       '<div class="tsn-flag-actions">' +
         '<button type="button" class="tsn-btn tsn-btn-primary" data-action="move-tactic">Move to Tactics</button>' +
         '<button type="button" class="tsn-btn" data-action="rewrite-ican">Rewrite as I can…</button>' +
@@ -1744,29 +2430,6 @@
       "</div>" +
     "</div>";
   }
-
-  ThirtySixtyNinetyEditor.prototype.refreshCellFlags = function (cellEl) {
-    var lensId = cellEl.getAttribute("data-lens");
-    var facetId = cellEl.getAttribute("data-facet");
-    var horizonId = cellEl.getAttribute("data-horizon");
-    var field = cellEl.getAttribute("data-field");
-    if (field !== "oc") return;
-    var cell = getCell(this.plan, lensId, facetId, horizonId);
-    var flags = pressureTestCell(cell);
-    cellEl.classList.toggle("has-empty-criteria", flags.some(function (f) { return f.type === "empty-criteria"; }));
-    cellEl.querySelectorAll(".tsn-line-crit").forEach(function (line) {
-      line.classList.remove("is-amber");
-    });
-    var host = cellEl.querySelector(".tsn-cell-flags");
-    if (host) host.innerHTML = "";
-    var critLines = cellEl.querySelectorAll(".tsn-line-crit");
-    flags.forEach(function (flag) {
-      if (flag.type !== "tactic-like") return;
-      var line = critLines[flag.lineIndex];
-      if (line) line.classList.add("is-amber");
-      if (host) host.insertAdjacentHTML("beforeend", flagCardHtml(flag));
-    });
-  };
 
   ThirtySixtyNinetyEditor.prototype.refreshPanelFlags = function () {
     if (!this.panel) return;
@@ -1778,10 +2441,14 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.redirectLine = function (el, mode) {
+    this.commitEdit();
     var cellEl = el.closest(".tsn-cell");
     var card = el.closest(".tsn-flag-card");
     if (!card) return;
     var lineIndex = parseInt(card.getAttribute("data-line"), 10);
+    if (cellEl && (isNaN(lineIndex) || lineIndex < 0)) {
+      lineIndex = parseInt(cellEl.getAttribute("data-index") || "0", 10) || 0;
+    }
     var lensId;
     var facetId;
     var horizonId;
@@ -1797,52 +2464,39 @@
       return;
     }
     var cell = getCell(this.plan, lensId, facetId, horizonId);
-    var crits = splitLines(cell.criteria);
+    var crits = compactItems(cell.criteria);
     if (lineIndex < 0 || lineIndex >= crits.length) return;
-    var fromPanel = !cellEl && !!this.panel;
     if (mode === "move") {
       var moved = crits.splice(lineIndex, 1)[0];
-      cell.criteria = crits.join("\n");
-      cell.tactics = (cell.tactics ? splitLines(cell.tactics).concat([moved]) : [moved]).join("\n");
+      cell.criteria = compactItems(crits);
+      var tacs = compactItems(cell.tactics);
+      tacs.push(moved);
+      cell.tactics = compactItems(tacs);
       pruneDismissals(cell);
-      if (cell.dismissed && (!cell.dismissedText || !cell.dismissedText.length)) {
-        cell.dismissed = cell.dismissed.filter(function (i) { return i !== lineIndex; }).map(function (i) {
-          return i > lineIndex ? i - 1 : i;
-        });
-        if (!cell.dismissed.length) delete cell.dismissed;
-      }
       this.touch();
-      if (fromPanel || isNarrow()) {
-        this.panel = { lensId: lensId, facetId: facetId, horizonId: horizonId };
-        this.render();
-        var tacBox = this.root.querySelector(".tsn-panel-tac");
-        if (tacBox) {
-          tacBox.focus();
-          tacBox.setSelectionRange(tacBox.value.length, tacBox.value.length);
-        }
-      } else {
-        this.render();
-        this.focusCell(lensId, facetId, horizonId, "tactics");
-      }
+      this.sel = {
+        lensId: lensId,
+        facetId: facetId,
+        horizonId: horizonId,
+        field: "tactics",
+        index: Math.max(0, cell.tactics.length - 1)
+      };
+      this.editing = false;
+      this.render({ keepFocus: true });
+      this.focusSelected();
       return;
     }
     if (mode === "rewrite") {
-      crits[lineIndex] = "I can ";
-      cell.criteria = crits.join("\n");
+      setItem(cell, "criteria", lineIndex, "I can ");
       pruneDismissals(cell);
       this.touch();
-      if (fromPanel || isNarrow()) {
-        this.panel = { lensId: lensId, facetId: facetId, horizonId: horizonId };
-        this.render();
-        var critBox = this.root.querySelector(".tsn-panel-crit");
-        if (critBox) {
-          critBox.focus();
-          critBox.setSelectionRange(critBox.value.length, critBox.value.length);
-        }
-      } else {
-        this.renderCellPair(lensId, facetId, horizonId);
-        this.focusCell(lensId, facetId, horizonId, "oc", lineIndex + 1);
-      }
+      this.startEdit({
+        lensId: lensId,
+        facetId: facetId,
+        horizonId: horizonId,
+        field: "criteria",
+        index: lineIndex
+      });
       return;
     }
     if (mode === "keep") {
@@ -1852,23 +2506,9 @@
       if (!cell.dismissedText) cell.dismissedText = [];
       if (!dismissedTextSet(cell)[normLine(kept)]) cell.dismissedText.push(kept);
       this.touch();
-      if (cellEl) this.refreshCellFlags(cellEl);
-      this.refreshPanelFlags();
+      this.render({ keepFocus: true });
+      this.focusSelected();
     }
-  };
-
-  ThirtySixtyNinetyEditor.prototype.renderCellPair = function (lensId, facetId, horizonId) {
-    var lens = getLens(this.plan, lensId);
-    var facet = getFacet(lens, facetId);
-    if (!facet) return;
-    var oc = this.root.querySelector(this.cellSelector(lensId, facetId, horizonId, "oc"));
-    var tac = this.root.querySelector(this.cellSelector(lensId, facetId, horizonId, "tactics"));
-    if (oc) {
-      oc.outerHTML = this.renderOcCell(lens, facet, horizonId);
-      var newOc = this.root.querySelector(this.cellSelector(lensId, facetId, horizonId, "oc"));
-      if (newOc) this.refreshCellFlags(newOc);
-    }
-    if (tac) tac.outerHTML = this.renderTacticsCell(lens, facet, horizonId);
   };
 
   ThirtySixtyNinetyEditor.prototype.addFacet = function (lensId) {
@@ -1941,7 +2581,21 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.applyUndo = function () {
-    if (!this.undo || this.undo.type !== "facet") return;
+    if (!this.undo) return;
+    if (this.undo.type === "plan") {
+      this.plan = this.undo.plan;
+      this.template = resolvePlanTemplate(this.plan, this.bundle) || this.template;
+      if (!planHasCellContent(this.plan) && this.template) {
+        this.plan.template = { id: this.template.id, version: this.template.version };
+        this.plan.startedBlank = true;
+      }
+      this.undo = null;
+      this.templateOffer = shouldOfferTemplateUpdate(this.plan, this.template);
+      this.touch();
+      this.render();
+      return;
+    }
+    if (this.undo.type !== "facet") return;
     var lens = getLens(this.plan, this.undo.lensId);
     if (!lens) return;
     var idx = Math.min(this.undo.index, lens.facets.length);
@@ -2038,29 +2692,143 @@
   ThirtySixtyNinetyEditor.prototype.startBlank = function () {
     var self = this;
     this.commitAllEdits();
-    if (!planHasCellContent(this.plan)) return;
-    this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", function () {
+    var go = function () {
       self.plan.lenses.forEach(function (lens) {
         (lens.facets || []).forEach(function (facet) {
           Object.keys(facet.cells || {}).forEach(function (hid) {
             facet.cells[hid] = emptyCell();
           });
         });
+        ensureMechanismsFacet(lens, self.plan.horizons, self.template, false);
       });
       self.plan.startedBlank = true;
+      if (self.template) {
+        self.plan.template = { id: self.template.id, version: self.template.version };
+      }
       self.fresh = true;
       self.panel = null;
       self.touch();
       self.render();
       if (!isNarrow()) self.focusFirstCell();
+    };
+    if (!planHasCellContent(this.plan)) {
+      go();
+      return;
+    }
+    this.askConfirm("Clear all objectives, criteria, and tactics? Facet names and dates stay.", "Start blank", go);
+  };
+
+  ThirtySixtyNinetyEditor.prototype.closeMenus = function () {
+    this.openMenuOpen = false;
+    this.templateMenuOpen = false;
+    if (!this.root) return;
+    if (typeof this.root.querySelectorAll === "function") {
+      this.root.querySelectorAll(".tsn-open-menu").forEach(function (menu) {
+        menu.hidden = true;
+      });
+    } else {
+      var menu = typeof this.root.querySelector === "function" ? this.root.querySelector(".tsn-open-menu") : null;
+      if (menu) menu.hidden = true;
+    }
+    var trigger = typeof this.root.querySelector === "function"
+      ? this.root.querySelector("[data-action=\"use-template-menu\"]")
+      : null;
+    if (trigger && trigger.setAttribute) trigger.setAttribute("aria-expanded", "false");
+  };
+
+  ThirtySixtyNinetyEditor.prototype.setTemplateMenuOpen = function (open) {
+    this.templateMenuOpen = !!open;
+    if (open) this.openMenuOpen = false;
+    if (!this.root || typeof this.root.querySelector !== "function") {
+      return { wrap: null, menu: null, trigger: null };
+    }
+    var openMenu = this.root.querySelector(".tsn-open-menu:not(.tsn-template-menu)");
+    if (openMenu) openMenu.hidden = true;
+    var wrap = this.root.querySelector(".tsn-template-wrap");
+    var menu = wrap && wrap.querySelector ? wrap.querySelector(".tsn-template-menu") : this.root.querySelector(".tsn-template-menu");
+    var trigger = wrap && wrap.querySelector
+      ? wrap.querySelector("[data-action=\"use-template-menu\"]")
+      : this.root.querySelector("[data-action=\"use-template-menu\"]");
+    if (menu) menu.hidden = !open;
+    if (trigger && trigger.setAttribute) trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    return { wrap: wrap, menu: menu, trigger: trigger };
+  };
+
+  ThirtySixtyNinetyEditor.prototype.templateMenuItems = function (wrap) {
+    var menu = wrap && wrap.querySelector ? wrap.querySelector(".tsn-template-menu") : null;
+    if (!menu || typeof menu.querySelectorAll !== "function") return [];
+    var nodes = menu.querySelectorAll("[role=\"menuitem\"]");
+    var out = [];
+    var i;
+    for (i = 0; i < nodes.length; i++) out.push(nodes[i]);
+    return out;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.onTemplateMenuKeydown = function (e) {
+    var wrap = e.target.closest ? e.target.closest(".tsn-template-wrap") : null;
+    if (!wrap) return;
+    var items = this.templateMenuItems(wrap);
+    var trigger = wrap.querySelector ? wrap.querySelector("[data-action=\"use-template-menu\"]") : null;
+    var idx = -1;
+    var i;
+    for (i = 0; i < items.length; i++) {
+      if (items[i] === e.target) idx = i;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.setTemplateMenuOpen(false);
+      if (trigger && trigger.focus) trigger.focus();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!this.templateMenuOpen) this.setTemplateMenuOpen(true);
+      items = this.templateMenuItems(wrap);
+      if (!items.length) return;
+      var next;
+      if (idx < 0) next = e.key === "ArrowUp" ? items.length - 1 : 0;
+      else next = e.key === "ArrowDown"
+        ? Math.min(idx + 1, items.length - 1)
+        : Math.max(idx - 1, 0);
+      if (items[next] && items[next].focus) items[next].focus();
+      return;
+    }
+    if ((e.key === "Home" || e.key === "End") && items.length) {
+      e.preventDefault();
+      var jump = e.key === "Home" ? items[0] : items[items.length - 1];
+      if (jump && jump.focus) jump.focus();
+    }
+  };
+
+  ThirtySixtyNinetyEditor.prototype.requestUseTemplate = function (id) {
+    var self = this;
+    this.closeMenus();
+    if (typeof this.commitAllEdits === "function") this.commitAllEdits();
+    var entries = listTemplates(this.bundle);
+    var chosen = id || (entries[0] && entries[0].id) || "product-senior";
+    var template = getTemplateById(this.bundle, chosen) || this.template;
+    if (!template) return;
+    this.askConfirm(templateApplyConfirmMessage(template), "Use template", function () {
+      self.applyTemplate(template);
     });
+  };
+
+  ThirtySixtyNinetyEditor.prototype.applyTemplate = function (template) {
+    if (!this.plan || !template) return;
+    if (typeof this.commitAllEdits === "function") this.commitAllEdits();
+    this.undo = { type: "plan", plan: clonePlan(this.plan) };
+    applyTemplateToPlan(this.plan, template);
+    this.template = template;
+    this.templateOffer = false;
+    this.panel = null;
+    this.touch();
+    this.render();
+    this.showUndo("Replaced the plan with the " + templateExampleName(template) + " example.");
   };
 
   ThirtySixtyNinetyEditor.prototype.requestOpenFile = function (inputId) {
     var self = this;
-    this.openMenuOpen = false;
-    var menu = this.root.querySelector(".tsn-open-menu");
-    if (menu) menu.hidden = true;
+    this.closeMenus();
     var go = function () {
       var input = self.root.querySelector(inputId);
       if (input) input.click();
@@ -2095,6 +2863,15 @@
     this.render({ keepFocus: true });
   };
 
+  ThirtySixtyNinetyEditor.prototype.adoptPlan = function (plan) {
+    this.plan = hydratePlan(plan);
+    var stamped = this.plan && this.plan.template && this.plan.template.id;
+    this.template = getTemplateById(this.bundle, stamped) || getDefaultTemplate(this.bundle) || null;
+    this.templateOffer = !!(this.template && shouldOfferTemplateUpdate(this.plan, this.template));
+    if (!planHasCellContent(this.plan)) this.plan.startedBlank = true;
+    this.fresh = false;
+  };
+
   ThirtySixtyNinetyEditor.prototype.openJsonFile = function (input) {
     var self = this;
     var file = input.files[0];
@@ -2109,9 +2886,7 @@
           alert("Invalid file: " + result.error);
           return;
         }
-        self.plan = hydratePlanDismissals(plan);
-        if (!planHasCellContent(self.plan)) self.plan.startedBlank = true;
-        self.fresh = false;
+        self.adoptPlan(plan);
         self.setDirty(false);
         self.saveDraft();
         self.render();
@@ -2177,7 +2952,7 @@
     this.closeModal();
     if (!issues.length) return;
     var issue = issues[0];
-    this.focusCell(issue.lensId, issue.facetId, issue.horizon, "oc", issue.lineIndex != null ? issue.lineIndex + 1 : 0);
+    this.focusCell(issue.lensId, issue.facetId, issue.horizon, issue.lineIndex != null ? "criteria" : "objective", issue.lineIndex);
   };
 
   ThirtySixtyNinetyEditor.prototype.askConfirm = function (message, okLabel, onOk) {
@@ -2248,6 +3023,10 @@
     this.disarmModal();
     var modal = this.root && this.root.querySelector(".tsn-confirm");
     if (modal) modal.remove();
+    if (this._blurRefreshWaiting && !opts.keepFocus) {
+      this._blurRefreshWaiting = false;
+      this.render({ keepFocus: true });
+    }
     if (opts.keepFocus) return;
     var back = this._modalFocus;
     this._modalFocus = null;
@@ -2280,8 +3059,8 @@
     var tac = this.root.querySelector(".tsn-panel-tac");
     var st = this.root.querySelector(".tsn-panel-status");
     if (obj) cell.objective = obj.value;
-    if (crit) cell.criteria = crit.value;
-    if (tac) cell.tactics = tac.value;
+    if (crit) cell.criteria = compactItems(crit.value);
+    if (tac) cell.tactics = compactItems(tac.value);
     if (st) cell.status = st.value;
     pruneDismissals(cell);
     this.touch();
@@ -2297,8 +3076,8 @@
     var self = this;
     var apply = function () {
       cell.objective = example.objective || "";
-      cell.criteria = example.criteria || "";
-      cell.tactics = example.tactics || "";
+      cell.criteria = compactItems(example.criteria);
+      cell.tactics = compactItems(example.tactics);
       self.touch();
       self.render({ keepFocus: true });
     };
@@ -2307,29 +3086,39 @@
   };
 
   ThirtySixtyNinetyEditor.prototype.savedFocus = function () {
-    var active = document.activeElement;
-    if (!active || !this.root.contains(active)) return null;
-    var cell = active.closest(".tsn-cell");
-    if (!cell) return null;
-    return {
-      lensId: cell.getAttribute("data-lens"),
-      facetId: cell.getAttribute("data-facet"),
-      horizonId: cell.getAttribute("data-horizon"),
-      field: cell.getAttribute("data-field")
-    };
+    return this.sel;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.renderTemplateControl = function () {
+    var self = this;
+    var entries = listTemplates(this.bundle);
+    var open = !!this.templateMenuOpen;
+    var items = entries.map(function (item) {
+      return '      <button type="button" role="menuitem" data-action="use-template" data-template="' + esc(item.id) + '">' +
+        esc(templateDisplayName(self.bundle, item)) + "</button>";
+    }).join("");
+    return '  <div class="tsn-open-wrap tsn-template-wrap">' +
+      '    <button type="button" class="tsn-btn tsn-template-trigger" data-action="use-template-menu" aria-haspopup="menu" aria-expanded="' + (open ? "true" : "false") + '" aria-controls="tsn-template-menu">Use template</button>' +
+      '    <div class="tsn-open-menu tsn-template-menu" id="tsn-template-menu" role="menu"' + (open ? "" : " hidden") + ">" +
+      items +
+      "    </div>" +
+      "  </div>";
   };
 
   ThirtySixtyNinetyEditor.prototype.render = function (opts) {
     opts = opts || {};
     this._rendering = true;
+    this._renderGen = (this._renderGen || 0) + 1;
+    this.clampSel();
     var focus = opts.keepFocus ? this.savedFocus() : null;
     var plan = this.plan;
     var template = this.template;
     var self = this;
     var start = fromIso(plan.startDate);
     var has180 = plan.horizons.some(function (h) { return h.id === "d180"; });
-    var span = this.showStatus ? 3 : 2;
-    var ocLabel = columnLabel(template, "objective");
+    var span = this.showStatus ? 4 : 3;
+    var objLabel = columnLabel(template, "objective");
+    var critLabel = columnLabel(template, "criteria") || "Criteria";
     var tacLabel = columnLabel(template, "tactics");
     var stLabel = columnLabel(template, "status");
     var seat = (plan.seat && plan.seat.title) || "";
@@ -2361,7 +3150,8 @@
     }).join("");
 
     var subheads = plan.horizons.map(function (h) {
-      return '<th class="tsn-sub" data-horizon-col="' + h.id + '">' + esc(ocLabel) + "</th>" +
+      return '<th class="tsn-sub" data-horizon-col="' + h.id + '">' + esc(objLabel) + "</th>" +
+        '<th class="tsn-sub" data-horizon-col="' + h.id + '">' + esc(critLabel) + "</th>" +
         '<th class="tsn-sub" data-horizon-col="' + h.id + '">' + esc(tacLabel) + "</th>" +
         (self.showStatus ? '<th class="tsn-sub" data-horizon-col="' + h.id + '">' + esc(stLabel) + "</th>" : "");
     }).join("");
@@ -2380,6 +3170,7 @@
       "    </div>",
       "  </div>",
       '  <button type="button" class="tsn-btn" data-action="start-blank">Start blank</button>',
+      this.renderTemplateControl(),
       '  <button type="button" class="tsn-btn tsn-btn-save" data-action="save">Save</button>',
       '  <button type="button" class="tsn-btn" data-action="export-xlsx">Export XLSX</button>',
       '  <button type="button" class="tsn-btn" data-action="export-md">Export Markdown</button>',
@@ -2389,6 +3180,9 @@
       '    <button type="button" class="tsn-switch' + (this.showStatus ? " is-on" : "") + '" data-action="toggle-status" role="switch" aria-checked="' + this.showStatus + '" aria-label="Show status"></button>',
       "  </label>",
       "</div>",
+      this.templateOffer
+        ? '<div class="tsn-template-offer" role="status">A newer ' + esc(templateExampleName(this.template)) + " example is available.</div>"
+        : "",
       '<div class="tsn-title-row">',
       '  <h1>30-60-90 <span class="tsn-beta">Beta</span>: <span class="tsn-seat-title tsn-editable' + (seat ? "" : " is-empty") + '" contenteditable="true" data-placeholder="Seat title">' + esc(seat) + "</span>",
       '    <span class="tsn-title-meta"> · starts ',
@@ -2410,7 +3204,7 @@
       '    <col class="tsn-col-lens">',
       '    <col class="tsn-col-facet">',
       plan.horizons.map(function () {
-        var cols = "<col><col>";
+        var cols = "<col><col><col>";
         if (self.showStatus) cols += "<col>";
         return cols;
       }).join(""),
@@ -2427,7 +3221,7 @@
       "</div>",
       '<div class="tsn-grid-footer">',
       has180 ? "" : '  <button type="button" class="tsn-add-180" data-action="add-180">+ Add 180 days</button>',
-      '  <p class="tsn-legend">Dashed underline = editable · Bold = Key Objective · ✓ = Evaluation Criterion · ▪ = Tactic · Gray italic = hint on empty cells · Start blank clears the writing · Status is hidden until toggled.</p>',
+      '  <p class="tsn-legend">Each objective, criterion, and tactic is its own cell. Type to replace. Enter or F2 or double-click to edit. Esc cancels. Arrows move. Tab moves across. Enter on the last criterion or tactic adds another. Status is hidden until toggled.</p>',
       "</div>",
       issues.length ? '<div class="tsn-print-check"><h2>Plan check</h2><ul>' + issues.map(function (issue) {
         return "<li>" + esc(formatIssueLine(issue)) + "</li>";
@@ -2439,11 +3233,21 @@
     this.root.setAttribute("data-narrow-horizon", this.narrowHorizon);
     var host = this.root.closest(".tsn-host");
     if (host) host.setAttribute("data-narrow-horizon", this.narrowHorizon);
-    this.root.querySelectorAll(".tsn-cell-oc").forEach(function (cell) {
-      self.refreshCellFlags(cell);
-    });
     this._rendering = false;
-    if (focus) this.focusCell(focus.lensId, focus.facetId, focus.horizonId, focus.field);
+    if (focus) this.sel = focus;
+    this.clampSel();
+    if (this.sel) {
+      var selEl = this.root.querySelector(this.cellSelector(
+        this.sel.lensId, this.sel.facetId, this.sel.horizonId, this.sel.field, this.sel.index
+      ));
+      if (!selEl) this.sel = null;
+    }
+    if (opts.keepFocus && this.sel) {
+      this.focusSelected();
+    } else if (!this.sel && !isNarrow()) {
+      var first = this.root.querySelector('.tsn-cell[data-field]:not([data-field="pad"])');
+      if (first) first.tabIndex = 0;
+    }
   };
 
   ThirtySixtyNinetyEditor.prototype.renderLensGroup = function (lens) {
@@ -2452,7 +3256,12 @@
     var src = templateLens(this.template, lens.id);
     var nameChanged = src && lens.name !== src.name;
     var letter = LENS_LETTERS[lens.id] || "";
-    var rows = collapsed ? 1 : lens.facets.length + 1;
+    var rows = 1;
+    if (!collapsed) {
+      lens.facets.forEach(function (facet) {
+        rows += self.facetSlotCount(lens, facet);
+      });
+    }
     var lensCell = '<th class="tsn-lens-cell" rowspan="' + rows + '">' +
       '<button type="button" class="tsn-lens-letter" data-action="toggle-lens" data-lens="' + lens.id + '" title="Collapse">' + letter + "</button>" +
       '<div class="tsn-lens-name tsn-editable" contenteditable="true" data-lens="' + lens.id + '">' + esc(lens.name) + "</div>" +
@@ -2462,23 +3271,34 @@
     if (collapsed) {
       return '<tbody class="tsn-lens-group is-collapsed" data-lens="' + lens.id + '">' +
         '<tr class="tsn-facet-row">' + lensCell +
-        '<th class="tsn-facet-cell" colspan="' + (1 + this.plan.horizons.length * (this.showStatus ? 3 : 2)) + '">' +
+        '<th class="tsn-facet-cell" colspan="' + (1 + this.plan.horizons.length * (this.showStatus ? 4 : 3)) + '">' +
         esc(lens.name) + " · " + lens.facets.length + " facets</th></tr></tbody>";
     }
 
     var facetRows = lens.facets.map(function (facet, fi) {
-      var facetCell = '<th class="tsn-facet-cell">' +
-        '<span class="tsn-facet-kicker"><span class="tsn-facet-letter">' + letter + "</span> " + esc(lens.name) + "</span>" +
-        '<span class="tsn-drag" draggable="true" data-drag-facet="1" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Reorder">⋮⋮</span>' +
-        '<div class="tsn-facet-name tsn-editable" contenteditable="true" data-lens="' + lens.id + '" data-facet="' + facet.id + '" data-placeholder="Facet">' + esc(facet.name) + "</div>" +
-        '<button type="button" class="tsn-facet-x" data-action="remove-facet" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Remove facet">×</button>' +
-        self.renderSuggestions(lens, facet) +
-        "</th>";
-      return '<tr class="tsn-facet-row" data-lens="' + lens.id + '" data-facet="' + facet.id + '">' +
-        (fi === 0 ? lensCell : "") +
-        facetCell +
-        self.renderFacetCells(lens, facet) +
-        "</tr>";
+      var slotCount = self.facetSlotCount(lens, facet);
+      var slotHtml = [];
+      var slot;
+      for (slot = 0; slot < slotCount; slot++) {
+        var facetCell = "";
+        if (slot === 0) {
+          facetCell = '<th class="tsn-facet-cell" rowspan="' + slotCount + '">' +
+            '<span class="tsn-facet-kicker"><span class="tsn-facet-letter">' + letter + "</span> " + esc(lens.name) + "</span>" +
+            '<span class="tsn-drag" draggable="true" data-drag-facet="1" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Reorder">⋮⋮</span>' +
+            '<div class="tsn-facet-name tsn-editable" contenteditable="true" data-lens="' + lens.id + '" data-facet="' + facet.id + '" data-placeholder="Facet">' + esc(facet.name) + "</div>" +
+            '<button type="button" class="tsn-facet-x" data-action="remove-facet" data-lens="' + lens.id + '" data-facet="' + facet.id + '" title="Remove facet">×</button>' +
+            self.renderSuggestions(lens, facet) +
+            "</th>";
+        }
+        slotHtml.push(
+          '<tr class="tsn-facet-row" data-lens="' + lens.id + '" data-facet="' + facet.id + '" data-slot="' + slot + '">' +
+            (fi === 0 && slot === 0 ? lensCell : "") +
+            facetCell +
+            self.renderFacetSlotCells(lens, facet, slot, slotCount) +
+          "</tr>"
+        );
+      }
+      return slotHtml.join("");
     }).join("");
 
     var addRow = '<tr class="tsn-add-row" data-lens="' + lens.id + '">' +
@@ -2504,71 +3324,79 @@
     return '<div class="tsn-suggest">' + items + "</div>";
   };
 
-  ThirtySixtyNinetyEditor.prototype.renderFacetCells = function (lens, facet) {
+  ThirtySixtyNinetyEditor.prototype.renderFacetSlotCells = function (lens, facet, slot, slotCount) {
     var self = this;
     return this.plan.horizons.map(function (h) {
-      return self.renderOcCell(lens, facet, h.id) +
-        self.renderTacticsCell(lens, facet, h.id) +
-        (self.showStatus ? self.renderStatusCell(lens, facet, h.id) : "");
+      var html = "";
+      if (slot === 0) html += self.renderGridCell(lens, facet, h.id, "objective", 0, slotCount);
+      html += self.renderGridCell(lens, facet, h.id, "criteria", slot);
+      html += self.renderGridCell(lens, facet, h.id, "tactics", slot);
+      if (slot === 0 && self.showStatus) html += self.renderGridCell(lens, facet, h.id, "status", 0, slotCount);
+      return html;
     }).join("");
   };
 
   ThirtySixtyNinetyEditor.prototype.renderEmptyFacetCells = function () {
-    var self = this;
-    var span = this.showStatus ? 3 : 2;
+    var span = this.showStatus ? 4 : 3;
     return this.plan.horizons.map(function (h) {
       return '<td class="tsn-cell tsn-cell-pad" colspan="' + span + '" data-horizon-col="' + h.id + '"></td>';
     }).join("");
   };
 
-  ThirtySixtyNinetyEditor.prototype.renderOcCell = function (lens, facet, horizonId) {
+  ThirtySixtyNinetyEditor.prototype.renderGridCell = function (lens, facet, horizonId, field, index, rowspan) {
     var cell = (facet.cells && facet.cells[horizonId]) || emptyCell();
     var hints = this.hintsFor(lens.id, facet, horizonId);
-    var filled = !!(cell.objective || cell.criteria);
-    var lines = "";
-    lines += lineMarkup("obj", cell.objective || "");
-    splitLines(cell.criteria).forEach(function (c) {
-      lines += lineMarkup("crit", c);
-    });
-    if (!cell.objective && !splitLines(cell.criteria).length) {
-      lines = lineMarkup("obj", "");
+    var sel = { lensId: lens.id, facetId: facet.id, horizonId: horizonId, field: field, index: index || 0 };
+    var selected = sameSel(this.sel, sel);
+    var editing = selected && this.editing;
+    var text = cellItemText(cell, field, index);
+    var filled = !!String(text).trim();
+    var flags = [];
+    if (field === "criteria") {
+      flags = pressureTestCell(cell).filter(function (f) {
+        return f.type === "tactic-like" && f.lineIndex === index;
+      });
     }
-    var ocClass = "tsn-cell tsn-cell-oc" + (filled ? " is-filled" : "") + (cell.objective ? " has-obj" : "") + (splitLines(cell.criteria).length ? " has-crit" : "");
-    return '<td class="' + ocClass + '" data-lens="' + lens.id +
-      '" data-facet="' + facet.id + '" data-horizon="' + horizonId + '" data-field="oc" data-horizon-col="' + horizonId + '">' +
-      '<button type="button" class="tsn-expand" data-action="expand" title="Open editor">⤢</button>' +
-      '<div class="tsn-cell-edit" role="textbox">' + lines + "</div>" +
-      '<div class="tsn-cell-hints" aria-hidden="true">' +
-        '<div class="tsn-hint tsn-hint-obj">' + esc(hints.objective) + "</div>" +
-        '<div class="tsn-hint tsn-hint-crit"><span class="tsn-bul">✓</span> ' + esc(hints.criteria) + "</div>" +
-      "</div>" +
-      '<div class="tsn-cell-flags"></div>' +
-      "</td>";
-  };
-
-  ThirtySixtyNinetyEditor.prototype.renderTacticsCell = function (lens, facet, horizonId) {
-    var cell = (facet.cells && facet.cells[horizonId]) || emptyCell();
-    var hints = this.hintsFor(lens.id, facet, horizonId);
-    var tacs = splitLines(cell.tactics);
-    var filled = tacs.length > 0;
-    var lines = tacs.length ? tacs.map(function (t) { return lineMarkup("tac", t); }).join("") : lineMarkup("tac", "");
-    return '<td class="tsn-cell tsn-cell-tac' + (filled ? " is-filled has-tac" : "") + '" data-lens="' + lens.id +
-      '" data-facet="' + facet.id + '" data-horizon="' + horizonId + '" data-field="tactics" data-horizon-col="' + horizonId + '">' +
-      '<button type="button" class="tsn-expand" data-action="expand" title="Open editor">⤢</button>' +
-      '<div class="tsn-cell-edit" role="textbox">' + lines + "</div>" +
-      '<div class="tsn-cell-hints" aria-hidden="true"><div class="tsn-hint tsn-hint-tac"><span class="tsn-bul">▪</span> ' + esc(hints.tactics) + "</div></div>" +
-      "</td>";
-  };
-
-  ThirtySixtyNinetyEditor.prototype.renderStatusCell = function (lens, facet, horizonId) {
-    var cell = (facet.cells && facet.cells[horizonId]) || emptyCell();
-    var hints = this.hintsFor(lens.id, facet, horizonId);
-    var filled = !!(cell.status && String(cell.status).trim());
-    return '<td class="tsn-cell tsn-cell-status' + (filled ? " is-filled" : "") + '" data-lens="' + lens.id +
-      '" data-facet="' + facet.id + '" data-horizon="' + horizonId + '" data-field="status" data-horizon-col="' + horizonId + '">' +
-      '<div class="tsn-cell-edit" role="textbox">' + lineMarkup("status", cell.status || "") + "</div>" +
-      '<div class="tsn-cell-hints" aria-hidden="true"><div class="tsn-hint">' + esc(hints.status) + "</div></div>" +
-      "</td>";
+    var emptyCrit = field === "objective" && pressureTestCell(cell).some(function (f) { return f.type === "empty-criteria"; });
+    var kindClass = field === "objective" ? "tsn-cell-obj" : field === "criteria" ? "tsn-cell-crit" : field === "tactics" ? "tsn-cell-tac" : "tsn-cell-status";
+    var classes = ["tsn-cell", kindClass];
+    if (filled) classes.push("is-filled");
+    if (field === "objective" && filled) classes.push("has-obj");
+    if (field === "criteria" && filled) classes.push("has-crit");
+    if (field === "tactics" && filled) classes.push("has-tac");
+    if (selected) classes.push("is-selected");
+    if (editing) classes.push("is-editing");
+    if (emptyCrit) classes.push("has-empty-criteria");
+    if (flags.length) classes.push("is-amber");
+    if ((field === "criteria" || field === "tactics") && (index || 0) === 0) classes.push("tsn-cell-lead");
+    var rs = rowspan && rowspan > 1 ? ' rowspan="' + rowspan + '"' : "";
+    var hint = "";
+    if (!filled && !editing) {
+      if (field === "objective") hint = hints.objective;
+      else if (field === "criteria") hint = hints.criteria;
+      else if (field === "tactics") hint = hints.tactics;
+      else hint = hints.status;
+    }
+    var body;
+    if (editing) {
+      body = '<textarea class="tsn-cell-input" rows="2" spellcheck="false">' + esc(text) + "</textarea>";
+    } else {
+      var bul = "";
+      if (field === "criteria") bul = '<span class="tsn-bul" aria-hidden="true">✓</span>';
+      if (field === "tactics") bul = '<span class="tsn-bul" aria-hidden="true">▪</span>';
+      body = '<div class="tsn-cell-view">' + bul + '<span class="tsn-cell-text">' + esc(text) + "</span></div>";
+      if (hint) {
+        body += '<div class="tsn-cell-hints" aria-hidden="true"><div class="tsn-hint">' +
+          (field === "criteria" ? '<span class="tsn-bul">✓</span> ' : field === "tactics" ? '<span class="tsn-bul">▪</span> ' : "") +
+          esc(hint) + "</div></div>";
+      }
+    }
+    if (flags.length) body += flags.map(flagCardHtml).join("");
+    return '<td class="' + classes.join(" ") + '"' + rs +
+      ' tabindex="' + (selected ? "0" : "-1") + '"' +
+      ' data-lens="' + lens.id + '" data-facet="' + facet.id + '" data-horizon="' + horizonId +
+      '" data-field="' + field + '" data-index="' + (index || 0) + '" data-horizon-col="' + horizonId + '">' +
+      body + "</td>";
   };
 
   ThirtySixtyNinetyEditor.prototype.renderPanel = function () {
@@ -2593,16 +3421,16 @@
       (hHelp ? '<p class="tsn-panel-help">' + esc(hHelp) + "</p>" : "") +
       '<label>Objective<textarea class="tsn-panel-field tsn-panel-obj" rows="2">' + esc(cell.objective) + "</textarea></label>" +
       "<label>Criteria<div class=\"tsn-panel-note\">" + esc(help.criteria || "") + "</div>" +
-        '<textarea class="tsn-panel-field tsn-panel-crit" rows="4">' + esc(cell.criteria) + "</textarea></label>" +
+        '<textarea class="tsn-panel-field tsn-panel-crit" rows="4">' + esc(compactItems(cell.criteria).join("\n")) + "</textarea></label>" +
       "<label>Tactics<div class=\"tsn-panel-note\">" + esc(help.tactics || "") + "</div>" +
-        '<textarea class="tsn-panel-field tsn-panel-tac" rows="4">' + esc(cell.tactics) + "</textarea></label>" +
+        '<textarea class="tsn-panel-field tsn-panel-tac" rows="4">' + esc(compactItems(cell.tactics).join("\n")) + "</textarea></label>" +
       (this.showStatus ? '<label>Status<textarea class="tsn-panel-field tsn-panel-status" rows="2">' + esc(cell.status) + "</textarea></label>" : "") +
       '<div class="tsn-panel-flags">' + flags.filter(function (f) { return f.type === "tactic-like"; }).map(flagCardHtml).join("") + "</div>" +
       '<div class="tsn-examples">' +
         (example ? '<div class="tsn-example is-good"><div class="tsn-example-label">Example</div>' +
           "<p><strong>" + esc(example.objective || "") + "</strong></p>" +
-          splitLines(example.criteria).map(function (c) { return "<p>✓ " + esc(c) + "</p>"; }).join("") +
-          splitLines(example.tactics).map(function (t) { return "<p>▪ " + esc(t) + "</p>"; }).join("") +
+          compactItems(example.criteria).map(function (c) { return "<p>✓ " + esc(c) + "</p>"; }).join("") +
+          compactItems(example.tactics).map(function (t) { return "<p>▪ " + esc(t) + "</p>"; }).join("") +
           '<button type="button" class="tsn-btn tsn-btn-primary" data-action="use-example">Use this</button></div>' : "") +
         (bad ? '<div class="tsn-example is-bad"><div class="tsn-example-label">Not a criterion</div><p>' + esc(bad) + "</p></div>" : "") +
       "</div>" +
@@ -2628,14 +3456,29 @@
     getDefaultTemplate: getDefaultTemplate,
     getBundle: getBundle,
     setBundle: setBundle,
+    listTemplates: listTemplates,
+    getTemplateById: getTemplateById,
+    resolvePlanTemplate: resolvePlanTemplate,
+    applyTemplateToPlan: applyTemplateToPlan,
+    shouldAutoApplyTemplate: shouldAutoApplyTemplate,
+    shouldOfferTemplateUpdate: shouldOfferTemplateUpdate,
+    templateApplyConfirmMessage: templateApplyConfirmMessage,
+    templateExampleName: templateExampleName,
+    templateDisplayName: templateDisplayName,
     loadTemplates: loadTemplates,
     splitLines: splitLines,
+    itemList: itemList,
+    compactItems: compactItems,
+    filledItems: filledItems,
+    hydratePlan: hydratePlan,
     nextTabTarget: nextTabTarget,
     pruneDismissals: pruneDismissals,
     hydratePlanDismissals: hydratePlanDismissals,
     planHasCellContent: planHasCellContent,
     isUntouchedEmptyDraft: isUntouchedEmptyDraft,
     readStoredDraft: readStoredDraft,
+    stampPlanVersion: stampPlanVersion,
+    VERSION: VERSION,
     STORE_KEYS: STORE_KEYS,
     NARROW_MAX_PX: NARROW_MAX_PX
   };

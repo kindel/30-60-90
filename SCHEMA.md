@@ -8,7 +8,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "kind": "kindel.30-60-90",
   "seat": { "title": "VP Product", "family": "pm" },
   "person": { "name": "", "role": "hire" },
@@ -30,9 +30,9 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
           "id": "end-users",
           "name": "End users",
           "cells": {
-            "d30": { "objective": "", "criteria": "", "tactics": "", "status": "" },
-            "d60": { "objective": "", "criteria": "", "tactics": "", "status": "" },
-            "d90": { "objective": "", "criteria": "", "tactics": "", "status": "" }
+            "d30": { "objective": "", "criteria": [], "tactics": [], "status": "" },
+            "d60": { "objective": "", "criteria": [], "tactics": [], "status": "" },
+            "d90": { "objective": "", "criteria": [], "tactics": [], "status": "" }
           }
         }
       ]
@@ -41,7 +41,7 @@ The file extension is `.json`. The `kind` field identifies it as a 30-60-90 plan
 }
 ```
 
-v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load.
+v1 files omit `template`, `horizon.dateManual`, `cell.dismissed`, and `cell.dismissedText`. They still load. Older files store `criteria` and `tactics` as newline-joined strings. The editor hydrates those into arrays and writes schema version 2 on save. v2 is the array-cell format. An older editor that only understands version 1 rejects a v2 file instead of joining the arrays.
 
 ## Provenance
 
@@ -53,15 +53,15 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `version` | number | yes | Schema version. Currently `1`. |
+| `version` | number | yes | Schema version. Currently `2`. New plans and migrated saves write `2`. Version `1` files still open. |
 | `kind` | string | yes | Always `"kindel.30-60-90"`. Used to identify the file type. |
 | `seat` | object | yes | The role being filled. `title` may be empty on a blank plan. |
 | `person` | object | no | The person filling the seat (hire or existing employee). |
 | `manager` | object | no | The hiring manager. |
 | `startDate` | string | yes | ISO 8601 date (YYYY-MM-DD). The first day of the plan. |
 | `include180` | boolean | no | If true, add a fourth horizon at 180 days. Default false. |
-| `template` | object | no | `{ id, version }` of the template the blank plan started from. New plans record this. v1 files do not have it. |
-| `startedBlank` | boolean | no | True after Start blank. An empty localStorage draft without this flag is ignored so an old empty grid does not hide the filled template. |
+| `template` | object | no | `{ id, version }` of the template last applied. New plans record this. v1 files do not have it. Increment `version` in the template JSON when examples or facets change so an empty or older draft can pick up the new writing. |
+| `startedBlank` | boolean | no | True after Start blank. An empty localStorage draft without this flag is ignored so an old empty grid does not hide the filled template. An empty draft whose template version is older than the file it came from is filled from that template on load. |
 | `horizons` | array | yes | The time horizons (30, 60, 90, optionally 180 days). |
 | `lenses` | array | yes | The four CBTO lenses with their facets. |
 
@@ -115,9 +115,9 @@ The old spreadsheet tab used the name "Charlie's Take" because Tig went by Charl
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `objective` | string | no | Key objective for this facet in this horizon. |
-| `criteria` | string | no | Evaluation criteria. One bullet per line. Should be first-person and inspectable. |
-| `tactics` | string | no | Tactics and deliverables. One bullet per line. |
+| `objective` | string | no | Key objective for this facet in this horizon. One cell. |
+| `criteria` | string[] | no | Evaluation criteria. One string per criterion, each its own cell. Older files may store a newline-joined string. |
+| `tactics` | string[] | no | Tactics and deliverables. One string per tactic, each its own cell. Older files may store a newline-joined string. |
 | `status` | string | no | Status. Empty on a new plan. |
 | `dismissed` | number[] | no | Current indexes of criteria the author kept after the tactic redirect. |
 | `dismissedText` | string[] | no | The kept criterion text. Keep writes both this and `dismissed`. Edits drop a Keep when the text is gone. |
@@ -136,7 +136,7 @@ Blank-plan content is not part of the plan schema. It lives in:
 
 A template uses the same grid shape as a plan (`horizons` and `lenses → facets → cells`) but cells hold `hint` and `example` instead of the user's text. Dates are not stored. The app computes them from the start date.
 
-A new plan copies each cell's example into the grid as editable text. **Start blank** clears that writing and keeps the template id. Opening a JSON file loads that file. Hints are never saved into the plan. **Use this** in the focused editor still copies one cell's example.
+A new plan copies each cell's example into the grid as editable text. Every CBTO lens starts with a Mechanisms facet. **Start blank** clears that writing, keeps the template id, and keeps (or adds) a Mechanisms row on every lens. Opening a JSON file loads that file. Hints are never saved into the plan. **Use this** in the focused editor still copies one cell's example.
 
 ## Family defaults (v1)
 
@@ -174,9 +174,9 @@ Keep dismisses the flag for that line. It stores the line index on `cell.dismiss
 
 One sheet named "30-60-90" with:
 
-- Header row: blank | blank | then for each horizon: "{offset} Days - {date} - {name}" spanning 4 columns
+- Header row: `kindel.30-60-90` in A1, then blank, then for each horizon: "{offset} Days - {date} - {name}" spanning 4 columns. A1 is the one-item-per-cell marker. Files without that stamp still split newline-joined criteria and tactics, including unlabeled extra rows.
 - Subheader row: blank | blank | then for each horizon: Key Objectives | Evaluation Criteria | Tactics/Deliverables | Status
-- Body rows: lens name in col A (repeated or only on first facet of lens), facet name in col B, then the four fields per horizon
+- Body rows: lens name in col A (on the first facet row of a lens), facet name in col B on the first slot row of that facet. Extra slot rows leave A and B blank. Each criterion and each tactic is its own spreadsheet cell. A facet with two tactics writes two body rows.
 
 ### Markdown
 
