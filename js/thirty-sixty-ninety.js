@@ -1371,24 +1371,9 @@
       self._pointerOutsideCell = !e.target.closest(".tsn-cell") ||
         !!actionEl ||
         !!e.target.closest(".tsn-flag-card");
-      self._pointerRestore = null;
-      if (!e.target.closest(".tsn-cell")) {
-        if (actionEl) self._pointerRestore = { action: actionEl.getAttribute("data-action") };
-        else if (e.target.classList && e.target.classList.contains("tsn-person-name")) self._pointerRestore = { className: "tsn-person-name" };
-        else if (e.target.classList && e.target.classList.contains("tsn-manager-name")) self._pointerRestore = { className: "tsn-manager-name" };
-        else if (e.target.classList && e.target.classList.contains("tsn-seat-title")) {
-          self._pointerRestore = { className: "tsn-seat-title", x: e.clientX, y: e.clientY };
-        } else if (e.target.classList && e.target.classList.contains("tsn-facet-name")) {
-          self._pointerRestore = {
-            className: "tsn-facet-name",
-            lensId: e.target.getAttribute("data-lens"),
-            facetId: e.target.getAttribute("data-facet"),
-            x: e.clientX,
-            y: e.clientY
-          };
-        }
-      }
+      self._pointerRestore = self.pointerRestoreFromEvent(e);
     }, true);
+    this.root.addEventListener("mouseup", function (e) { self.notePointerRestoreCaret(e); }, true);
     this.root.addEventListener("mousedown", function (e) { self.onCellMouseDown(e); });
     this.root.addEventListener("dblclick", function (e) { self.onCellDblClick(e); });
     this.root.addEventListener("input", function (e) { self.onInput(e); });
@@ -1819,15 +1804,64 @@
     }, 0);
   };
 
+  ThirtySixtyNinetyEditor.prototype.pointerRestoreFromEvent = function (e) {
+    var t = e && e.target;
+    if (!t || !t.closest) return null;
+    if (t.closest(".tsn-cell")) return null;
+    var actionEl = t.closest("[data-action]");
+    if (actionEl) return { action: actionEl.getAttribute("data-action") };
+    var startEl = t.closest(".tsn-start-date-input") ||
+      (t.closest(".tsn-start-wrap") && t.closest(".tsn-start-wrap").querySelector(".tsn-start-date-input"));
+    if (startEl) return { className: "tsn-start-date-input", x: e.clientX, y: e.clientY };
+    var hDate = t.closest(".tsn-horizon-date-input") ||
+      (t.closest(".tsn-h-date") && t.closest(".tsn-h-date").querySelector(".tsn-horizon-date-input"));
+    if (hDate) {
+      return {
+        className: "tsn-horizon-date-input",
+        horizonId: hDate.getAttribute("data-horizon"),
+        x: e.clientX,
+        y: e.clientY
+      };
+    }
+    if (t.closest(".tsn-person-name")) return { className: "tsn-person-name", x: e.clientX, y: e.clientY };
+    if (t.closest(".tsn-manager-name")) return { className: "tsn-manager-name", x: e.clientX, y: e.clientY };
+    if (t.closest(".tsn-seat-title")) return { className: "tsn-seat-title", x: e.clientX, y: e.clientY };
+    var facet = t.closest(".tsn-facet-name");
+    if (facet) {
+      return {
+        className: "tsn-facet-name",
+        lensId: facet.getAttribute("data-lens"),
+        facetId: facet.getAttribute("data-facet"),
+        x: e.clientX,
+        y: e.clientY
+      };
+    }
+    return null;
+  };
+
+  ThirtySixtyNinetyEditor.prototype.notePointerRestoreCaret = function (e) {
+    var restore = this._pointerRestore;
+    var t = e && e.target;
+    if (!restore || restore.action || !t || typeof t.selectionStart !== "number") return;
+    restore.start = t.selectionStart;
+    restore.end = t.selectionEnd;
+  };
+
   ThirtySixtyNinetyEditor.prototype.focusPointerRestore = function (restore) {
     if (!restore || !this.root) return;
     var el = null;
     if (restore.action) el = this.root.querySelector('[data-action="' + restore.action + '"]');
     else if (restore.className === "tsn-facet-name" && restore.lensId) {
       el = this.root.querySelector('.tsn-facet-name[data-lens="' + restore.lensId + '"][data-facet="' + restore.facetId + '"]');
+    } else if (restore.className === "tsn-horizon-date-input" && restore.horizonId) {
+      el = this.root.querySelector('.tsn-horizon-date-input[data-horizon="' + restore.horizonId + '"]');
     } else if (restore.className) el = this.root.querySelector("." + restore.className);
     if (!el) return;
     if (el.focus) el.focus();
+    if (typeof el.setSelectionRange === "function" && typeof restore.start === "number") {
+      try { el.setSelectionRange(restore.start, restore.end); } catch (err) {}
+      return;
+    }
     if (restore.x == null || restore.y == null || typeof document === "undefined") return;
     var range = null;
     if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(restore.x, restore.y);

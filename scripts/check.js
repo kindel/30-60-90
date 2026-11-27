@@ -132,6 +132,9 @@ assert(src.indexOf("first.tabIndex = 0") >= 0, "an unselected grid still has a t
 assert(src.indexOf("focusPointerRestore") >= 0, "blur restore puts focus back on the clicked control");
 assert(src.indexOf('className: "tsn-seat-title"') >= 0, "blur restore covers the seat title");
 assert(src.indexOf('className: "tsn-facet-name"') >= 0, "blur restore covers a facet name");
+assert(src.indexOf('className: "tsn-start-date-input"') >= 0, "blur restore covers the start date");
+assert(src.indexOf('className: "tsn-horizon-date-input"') >= 0, "blur restore covers a horizon date");
+assert(src.indexOf("notePointerRestoreCaret") >= 0, "blur restore records the caret in name and date inputs");
 assert(src.indexOf("if (isNarrow()) {") >= 0 && src.indexOf("e.key !== \"Tab\"") >= 0, "narrow Tab does not run the desktop textarea handler");
 assert(src.indexOf("execCommand(\"copy\")") >= 0, "copy falls back to execCommand");
 assert(src.indexOf("this._clip") < 0, "unread _clip is gone");
@@ -855,6 +858,8 @@ function makeEditor(srcPlan) {
       if (sel.indexOf(".tsn-cell[data-lens=") === 0) return firstCell;
       var action = sel.match(/^\[data-action="([^"]+)"\]$/);
       if (action) return node(action[1]);
+      var hDate = sel.match(/^\.tsn-horizon-date-input\[data-horizon="([^"]+)"\]$/);
+      if (hDate) return node("tsn-horizon-date-input:" + hDate[1]);
       if (sel.charAt(0) === ".") return node(sel.slice(1));
       return null;
     },
@@ -1059,6 +1064,52 @@ restore.focusPointerRestore({ className: "tsn-seat-title" });
 assertEqual(restore.focused.join(","), "save,tsn-person-name,tsn-seat-title", "blur restore focuses the seat title");
 restore.focusPointerRestore({ className: "tsn-facet-name", lensId: "customer", facetId: "end-users" });
 assert(restore.focused[restore.focused.length - 1].indexOf("tsn-facet-name") >= 0, "blur restore focuses the clicked facet name");
+restore.focusPointerRestore({ className: "tsn-start-date-input" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-start-date-input", "blur restore focuses the start date");
+restore.focusPointerRestore({ className: "tsn-horizon-date-input", horizonId: "d30" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-horizon-date-input:d30", "blur restore focuses the clicked horizon date");
+restore.focusPointerRestore({ className: "tsn-manager-name" });
+assertEqual(restore.focused[restore.focused.length - 1], "tsn-manager-name", "blur restore focuses the People manager field");
+
+function fakeField(className, attrs) {
+  attrs = attrs || {};
+  return {
+    classList: { contains: function (n) { return n === className; } },
+    getAttribute: function (k) { return attrs[k]; },
+    closest: function (sel) {
+      if (sel === ".tsn-cell" || sel === "[data-action]") return null;
+      if (sel.charAt(0) === "." && sel.slice(1) === className) return this;
+      return null;
+    },
+    querySelector: function () { return null; }
+  };
+}
+var mapEd = makeEditor(editorPlan);
+var startMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-start-date-input"), clientX: 4, clientY: 8 });
+assertEqual(startMap && startMap.className, "tsn-start-date-input", "mousedown on start date records a restore");
+var horizonMap = mapEd.pointerRestoreFromEvent({
+  target: fakeField("tsn-horizon-date-input", { "data-horizon": "d60" }),
+  clientX: 1,
+  clientY: 2
+});
+assertEqual(horizonMap && horizonMap.horizonId, "d60", "mousedown on a horizon date records that horizon");
+var hireMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-person-name"), clientX: 3, clientY: 6 });
+assertEqual(hireMap && hireMap.className, "tsn-person-name", "mousedown on hire name records a restore");
+var mgrMap = mapEd.pointerRestoreFromEvent({ target: fakeField("tsn-manager-name"), clientX: 5, clientY: 7 });
+assertEqual(mgrMap && mgrMap.className, "tsn-manager-name", "mousedown on manager name records a restore");
+
+var hireCaret = { range: null, focus: function () { restore.focused.push("hire-caret"); } };
+hireCaret.setSelectionRange = function (a, b) { hireCaret.range = a + ":" + b; };
+var caretEd = makeEditor(editorPlan);
+caretEd.root.querySelector = function (sel) {
+  if (sel === ".tsn-person-name") return hireCaret;
+  return null;
+};
+caretEd.focusPointerRestore({ className: "tsn-person-name", start: 2, end: 2 });
+assertEqual(hireCaret.range, "2:2", "blur restore puts the caret back in the hire name");
+caretEd._pointerRestore = { className: "tsn-person-name" };
+caretEd.notePointerRestoreCaret({ target: { selectionStart: 4, selectionEnd: 4 } });
+assertEqual(caretEd._pointerRestore.start, 4, "mouseup records the caret in a name or date input");
 
 var origMatchMedia = window.matchMedia;
 window.matchMedia = function () { return { matches: true }; };
