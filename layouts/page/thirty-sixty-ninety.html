@@ -9,6 +9,7 @@
     {{ with index .Site.Data.tools "30-60-90" }}
       {{ partial "app-kit/frame-start.html" (dict "card" . "page" $) }}
       {{ partial "app-kit/summary.html" . }}
+      {{/* Add Kindness With Dates to card.json posts once that essay is published at https://kindel.com/essays/kindness-with-dates/. */}}
       {{ partial "app-kit/related.html" . }}
     {{ end }}
     <div class="tsn-host" id="tsn-host">

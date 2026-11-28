@@ -1558,5 +1558,114 @@ var filled = api.pressureTestPlan(flaggedPlan);
 assert(filled.length >= 1, "pressureTestPlan feeds Plan check");
 assert(filled[0].lensId, "issues include ids for Fix");
 
+console.log("Testing related essays...");
+var card = readJson("card.json");
+var relatedPosts = [
+  {
+    title: "Hiring First. Everything Else Second.",
+    href: "https://kindel.com/essays/hiring-first-everything-else-second/"
+  },
+  {
+    title: "Customer, Business, Technology, Organization (CBTO)",
+    href: "https://kindel.com/essays/customer-business-technology-organization-cbto/"
+  },
+  {
+    title: "Have a Plan (With Dates)",
+    href: "https://kindel.com/essays/have-a-plan-with-dates/"
+  }
+];
+assertEqual(JSON.stringify(card.posts), JSON.stringify(relatedPosts), "card.json posts match the explainer essays");
+card.posts.forEach(function (post) {
+  assert(/^https:\/\/kindel\.com\/essays\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(post.href), post.title + " uses a kindel.com/essays slug");
+});
+function relatedMarkup(posts) {
+  return "Related essays: " + posts.map(function (post) {
+    return '<a href="' + post.href + '">' + post.title + "</a>";
+  }).join(' <span aria-hidden="true">|</span> ');
+}
+var expectedRelated = relatedMarkup(relatedPosts);
+function stylesheetHrefs(html) {
+  var hrefs = [];
+  var tagRe = /<link\b[^>]*>/gi;
+  var tag;
+  while ((tag = tagRe.exec(html))) {
+    var t = tag[0];
+    if (!/\brel\s*=\s*["']stylesheet["']/i.test(t)) continue;
+    var href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(t);
+    if (href) hrefs.push(href[1].replace(/[?#].*$/, ""));
+  }
+  return hrefs;
+}
+
+function relatedClassNames(html) {
+  var m = /<p\b[^>]*class=["']([^"']+)["'][^>]*>\s*Related essays:/i.exec(html);
+  return m ? m[1].trim().split(/\s+/) : [];
+}
+
+function printHidesSelector(css, selector) {
+  var idx = 0;
+  while ((idx = css.indexOf("@media print", idx)) !== -1) {
+    var start = css.indexOf("{", idx);
+    if (start < 0) break;
+    var depth = 0;
+    var i;
+    for (i = start; i < css.length; i++) {
+      if (css.charAt(i) === "{") depth += 1;
+      else if (css.charAt(i) === "}") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    var block = css.slice(start + 1, i);
+    var ruleRe = /([^{]+)\{([^}]+)\}/g;
+    var m;
+    while ((m = ruleRe.exec(block))) {
+      if (!/display\s*:\s*none/i.test(m[2])) continue;
+      var sels = m[1].split(",");
+      for (var j = 0; j < sels.length; j++) {
+        if (sels[j].trim() === selector) return true;
+      }
+    }
+    idx = i + 1;
+  }
+  return false;
+}
+
+["index.html", "preview.html"].forEach(function (file) {
+  var html = fs.readFileSync(path.join(root, file), "utf8");
+  assert(html.indexOf(expectedRelated) >= 0, file + " lists the same essays as card.json");
+  assert(html.indexOf("kindness-with-dates") >= 0, file + " comments Kindness With Dates for later");
+  assert(html.indexOf('href="https://kindel.com/essays/kindness-with-dates/"') < 0, file + " does not link Kindness With Dates yet");
+  var classes = relatedClassNames(html);
+  assert(classes.indexOf("app-related") >= 0, file + " is missing the Related essays class");
+  var hrefs = stylesheetHrefs(html);
+  assert(hrefs.length > 0, file + " links a stylesheet");
+  var hides = false;
+  hrefs.forEach(function (rel) {
+    var cssPath = path.join(root, rel);
+    if (!fs.existsSync(cssPath)) return;
+    var sheet = fs.readFileSync(cssPath, "utf8");
+    classes.forEach(function (cls) {
+      if (printHidesSelector(sheet, "." + cls)) hides = true;
+    });
+  });
+  assert(hides, file + " is missing the print-hide rule for Related essays");
+});
+var layout = fs.readFileSync(path.join(root, "layouts/page/thirty-sixty-ninety.html"), "utf8");
+assert(layout.indexOf("app-kit/related.html") >= 0, "host layout prints related essays from the card");
+assert(layout.indexOf("Kindness With Dates") >= 0, "host layout comments Kindness With Dates for later");
+var css = fs.readFileSync(path.join(root, "css/thirty-sixty-ninety.css"), "utf8");
+assert(css.indexOf(".app-related") >= 0, "explainer Related essays uses the CBTO host class");
+assert(css.indexOf("--kld-rust-dark") >= 0, "Related essay links use the host rust-dark token");
+assert(printHidesSelector(css, ".app-related"), "print hides Related essays so they are not part of the plan");
+assert(
+  !printHidesSelector("@media print { .app-related a { display: none; } }", ".app-related"),
+  "hiding Related essay links is not enough"
+);
+assert(
+  !printHidesSelector("@media print { .app-related + div { display: none; } }", ".app-related"),
+  "hiding a sibling of Related essays is not enough"
+);
+
 console.log("");
 console.log("All tests passed!");
