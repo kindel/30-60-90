@@ -1623,10 +1623,7 @@ function printHidesSelector(css, selector) {
       if (!/display\s*:\s*none/i.test(m[2])) continue;
       var sels = m[1].split(",");
       for (var j = 0; j < sels.length; j++) {
-        var tok = sels[j].trim();
-        if (tok === selector) return true;
-        var bits = tok.split(/[\s>+~]/);
-        if (bits.indexOf(selector) >= 0) return true;
+        if (sels[j].trim() === selector) return true;
       }
     }
     idx = i + 1;
@@ -1661,6 +1658,14 @@ var css = fs.readFileSync(path.join(root, "css/thirty-sixty-ninety.css"), "utf8"
 assert(css.indexOf(".app-related") >= 0, "explainer Related essays uses the CBTO host class");
 assert(css.indexOf("--kld-rust-dark") >= 0, "Related essay links use the host rust-dark token");
 assert(printHidesSelector(css, ".app-related"), "print hides Related essays so they are not part of the plan");
+assert(
+  !printHidesSelector("@media print { .app-related a { display: none; } }", ".app-related"),
+  "hiding Related essay links is not enough"
+);
+assert(
+  !printHidesSelector("@media print { .app-related + div { display: none; } }", ".app-related"),
+  "hiding a sibling of Related essays is not enough"
+);
 
 console.log("");
 console.log("All tests passed!");
