@@ -1584,12 +1584,75 @@ function relatedMarkup(posts) {
   }).join(' <span aria-hidden="true">|</span> ');
 }
 var expectedRelated = relatedMarkup(relatedPosts);
+function stylesheetHrefs(html) {
+  var hrefs = [];
+  var tagRe = /<link\b[^>]*>/gi;
+  var tag;
+  while ((tag = tagRe.exec(html))) {
+    var t = tag[0];
+    if (!/\brel\s*=\s*["']stylesheet["']/i.test(t)) continue;
+    var href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(t);
+    if (href) hrefs.push(href[1].replace(/[?#].*$/, ""));
+  }
+  return hrefs;
+}
+
+function relatedClassNames(html) {
+  var m = /<p\b[^>]*class=["']([^"']+)["'][^>]*>\s*Related essays:/i.exec(html);
+  return m ? m[1].trim().split(/\s+/) : [];
+}
+
+function printHidesSelector(css, selector) {
+  var idx = 0;
+  while ((idx = css.indexOf("@media print", idx)) !== -1) {
+    var start = css.indexOf("{", idx);
+    if (start < 0) break;
+    var depth = 0;
+    var i;
+    for (i = start; i < css.length; i++) {
+      if (css.charAt(i) === "{") depth += 1;
+      else if (css.charAt(i) === "}") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    var block = css.slice(start + 1, i);
+    var ruleRe = /([^{]+)\{([^}]+)\}/g;
+    var m;
+    while ((m = ruleRe.exec(block))) {
+      if (!/display\s*:\s*none/i.test(m[2])) continue;
+      var sels = m[1].split(",");
+      for (var j = 0; j < sels.length; j++) {
+        var tok = sels[j].trim();
+        if (tok === selector) return true;
+        var bits = tok.split(/[\s>+~]/);
+        if (bits.indexOf(selector) >= 0) return true;
+      }
+    }
+    idx = i + 1;
+  }
+  return false;
+}
+
 ["index.html", "preview.html"].forEach(function (file) {
   var html = fs.readFileSync(path.join(root, file), "utf8");
-  assert(html.indexOf('class="app-related"') >= 0, file + " has the Related essays section");
   assert(html.indexOf(expectedRelated) >= 0, file + " lists the same essays as card.json");
   assert(html.indexOf("kindness-with-dates") >= 0, file + " comments Kindness With Dates for later");
   assert(html.indexOf('href="https://kindel.com/essays/kindness-with-dates/"') < 0, file + " does not link Kindness With Dates yet");
+  var classes = relatedClassNames(html);
+  assert(classes.indexOf("app-related") >= 0, file + " is missing the Related essays class");
+  var hrefs = stylesheetHrefs(html);
+  assert(hrefs.length > 0, file + " links a stylesheet");
+  var hides = false;
+  hrefs.forEach(function (rel) {
+    var cssPath = path.join(root, rel);
+    if (!fs.existsSync(cssPath)) return;
+    var sheet = fs.readFileSync(cssPath, "utf8");
+    classes.forEach(function (cls) {
+      if (printHidesSelector(sheet, "." + cls)) hides = true;
+    });
+  });
+  assert(hides, file + " is missing the print-hide rule for Related essays");
 });
 var layout = fs.readFileSync(path.join(root, "layouts/page/thirty-sixty-ninety.html"), "utf8");
 assert(layout.indexOf("app-kit/related.html") >= 0, "host layout prints related essays from the card");
@@ -1597,8 +1660,7 @@ assert(layout.indexOf("Kindness With Dates") >= 0, "host layout comments Kindnes
 var css = fs.readFileSync(path.join(root, "css/thirty-sixty-ninety.css"), "utf8");
 assert(css.indexOf(".app-related") >= 0, "explainer Related essays uses the CBTO host class");
 assert(css.indexOf("--kld-rust-dark") >= 0, "Related essay links use the host rust-dark token");
-var printRule = css.split("@media print")[1] || "";
-assert(printRule.indexOf(".app-related") >= 0, "print hides Related essays so they are not part of the plan");
+assert(printHidesSelector(css, ".app-related"), "print hides Related essays so they are not part of the plan");
 
 console.log("");
 console.log("All tests passed!");
