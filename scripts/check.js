@@ -1597,6 +1597,8 @@ assert(layout.indexOf("Kindness With Dates") >= 0, "host layout comments Kindnes
 var css = fs.readFileSync(path.join(root, "css/thirty-sixty-ninety.css"), "utf8");
 assert(css.indexOf(".app-related") >= 0, "explainer Related essays uses the CBTO host class");
 assert(css.indexOf("--kld-rust-dark") >= 0, "Related essay links use the host rust-dark token");
+var printRule = css.split("@media print")[1] || "";
+assert(printRule.indexOf(".app-related") >= 0, "print hides Related essays so they are not part of the plan");
 
 console.log("");
 console.log("All tests passed!");

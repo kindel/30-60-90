@@ -1337,6 +1337,7 @@ body.tsn-page {
   .tsn-flag-card,
   .tsn-legend,
   .tsn-footer,
+  .app-related,
   .tsn-beta,
   .tsn-repo {
     display: none !important;
