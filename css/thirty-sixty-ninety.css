@@ -9,6 +9,7 @@
   --kld-sage: #dce7dc;
   --kld-blue: #24445f;
   --kld-rust: #b5532f;
+  --kld-rust-dark: #883a22;
   --kld-error: #c53030;
   --tsn-black: #111111;
   --tsn-hint: #9aa3ad;
@@ -989,6 +990,33 @@ body.tsn-page {
 
 .tsn-print-check {
   display: none;
+}
+
+.app-related {
+  margin: 0.7rem 0 0;
+  color: var(--kld-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.tsn-host > .app-related {
+  margin: 0 0 0.85rem;
+}
+
+.app-related a {
+  color: var(--kld-rust-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.app-related a:hover {
+  color: var(--kld-blue);
+  text-decoration: underline;
+}
+
+.app-related span {
+  margin: 0 0.35rem;
+  color: var(--kld-line);
 }
 
 .tsn-footer {

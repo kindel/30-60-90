@@ -1558,5 +1558,45 @@ var filled = api.pressureTestPlan(flaggedPlan);
 assert(filled.length >= 1, "pressureTestPlan feeds Plan check");
 assert(filled[0].lensId, "issues include ids for Fix");
 
+console.log("Testing related essays...");
+var card = readJson("card.json");
+var relatedPosts = [
+  {
+    title: "Hiring First. Everything Else Second.",
+    href: "https://kindel.com/essays/hiring-first-everything-else-second/"
+  },
+  {
+    title: "Customer, Business, Technology, Organization (CBTO)",
+    href: "https://kindel.com/essays/customer-business-technology-organization-cbto/"
+  },
+  {
+    title: "Have a Plan (With Dates)",
+    href: "https://kindel.com/essays/have-a-plan-with-dates/"
+  }
+];
+assertEqual(JSON.stringify(card.posts), JSON.stringify(relatedPosts), "card.json posts match the explainer essays");
+card.posts.forEach(function (post) {
+  assert(/^https:\/\/kindel\.com\/essays\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(post.href), post.title + " uses a kindel.com/essays slug");
+});
+function relatedMarkup(posts) {
+  return "Related essays: " + posts.map(function (post) {
+    return '<a href="' + post.href + '">' + post.title + "</a>";
+  }).join(' <span aria-hidden="true">|</span> ');
+}
+var expectedRelated = relatedMarkup(relatedPosts);
+["index.html", "preview.html"].forEach(function (file) {
+  var html = fs.readFileSync(path.join(root, file), "utf8");
+  assert(html.indexOf('class="app-related"') >= 0, file + " has the Related essays section");
+  assert(html.indexOf(expectedRelated) >= 0, file + " lists the same essays as card.json");
+  assert(html.indexOf("kindness-with-dates") >= 0, file + " comments Kindness With Dates for later");
+  assert(html.indexOf('href="https://kindel.com/essays/kindness-with-dates/"') < 0, file + " does not link Kindness With Dates yet");
+});
+var layout = fs.readFileSync(path.join(root, "layouts/page/thirty-sixty-ninety.html"), "utf8");
+assert(layout.indexOf("app-kit/related.html") >= 0, "host layout prints related essays from the card");
+assert(layout.indexOf("Kindness With Dates") >= 0, "host layout comments Kindness With Dates for later");
+var css = fs.readFileSync(path.join(root, "css/thirty-sixty-ninety.css"), "utf8");
+assert(css.indexOf(".app-related") >= 0, "explainer Related essays uses the CBTO host class");
+assert(css.indexOf("--kld-rust-dark") >= 0, "Related essay links use the host rust-dark token");
+
 console.log("");
 console.log("All tests passed!");
